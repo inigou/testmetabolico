@@ -140,6 +140,17 @@ export default function LandingPage() {
               my<span style={{ color: C.greenLight }}>metaboliq</span>
             </span>
           </div>
+          
+          <a href="/dashboard" style={{
+            color: 'rgba(255,255,255,0.85)',
+            fontSize: 13,
+            textDecoration: 'none',
+            fontWeight: 600,
+            marginRight: 8,
+          }}>
+            Mi Espacio →
+          </a>
+
           <button
             onClick={scrollToBot}
             style={{
