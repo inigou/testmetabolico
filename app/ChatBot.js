@@ -321,6 +321,34 @@ const microfeedbacks = [
   { despues: 'vitalidad', mensaje: '🧠 Último bloque, ya casi lo tenemos.' },
 ];
 
+const TC_TEXTO = `TÉRMINOS Y CONDICIONES DE USO — mymetaboliq.com
+Última actualización: abril 2025
+Titular: Iñigo Fábregas Unzurrunzaga · contacto: tutestmetabolico@gmail.com
+
+1. NATURALEZA DEL SERVICIO Y CARÁCTER ORIENTATIVO
+mymetaboliq.com ofrece un test de evaluación metabólica basado en datos autodeclarados por el usuario. Los resultados obtenidos — incluyendo el Índice de Calidad Metabólica (ICM), la edad metabólica estimada y las recomendaciones derivadas — tienen exclusivamente carácter orientativo e informativo.
+
+Los cálculos se realizan mediante algoritmos que ponderan respuestas subjetivas del usuario. Por tanto, los resultados son aproximaciones estadísticas y en ningún caso constituyen un diagnóstico médico, nutricional o psicológico clínico.
+
+2. AUSENCIA DE RELACIÓN MÉDICO-PACIENTE
+El uso de este servicio no establece ningún tipo de relación médico-paciente, ni entre el usuario y el titular del sitio, ni entre el usuario y los profesionales de salud mencionados o enlazados en la plataforma. Las recomendaciones generadas son pautas generales de bienestar y no sustituyen bajo ningún concepto la valoración individualizada por parte de un profesional sanitario colegiado.
+
+3. LIMITACIÓN DE RESPONSABILIDAD
+El titular de mymetaboliq.com no asume responsabilidad alguna por las decisiones que el usuario adopte basándose, total o parcialmente, en los resultados del test. El usuario reconoce y acepta que:
+
+(a) Los resultados dependen de la veracidad y precisión de los datos introducidos.
+(b) Factores individuales de salud no contemplados en el test pueden alterar significativamente los resultados reales.
+(c) Cualquier cambio en la dieta, rutina de ejercicio o hábitos de vida debe ser supervisado por un profesional de la salud cualificado.
+
+4. PROFESIONALES AFILIADOS
+mymetaboliq.com puede mostrar o recomendar profesionales de la salud, entre ellos nutricionistas, como Rocío Fábregas. Dichos profesionales actúan de forma independiente y su mención en la plataforma no implica que el titular del sitio avale, garantice ni sea responsable de los servicios que estos presten. La relación contractual y profesional se establece directamente entre el usuario y el profesional elegido.
+
+5. PROTECCIÓN DE DATOS
+Los datos personales facilitados — incluyendo el email y las respuestas al test — son tratados conforme al Reglamento (UE) 2016/679 (RGPD) y la Ley Orgánica 3/2018 (LOPDGDD). Se utilizan exclusivamente para generar el informe metabólico personalizado y, con el consentimiento del usuario, para el envío de recordatorios periódicos de seguimiento. No se ceden a terceros con fines comerciales.
+
+6. ACEPTACIÓN
+Al pulsar el botón de envío, el usuario declara haber leído, comprendido y aceptado íntegramente los presentes Términos y Condiciones, así como la Política de Privacidad de mymetaboliq.com.`;
+
 export default function ChatBot() {
   const [mensajes, setMensajes] = useState([]);
   const [preguntaActual, setPreguntaActual] = useState(0);
@@ -329,6 +357,9 @@ export default function ChatBot() {
   const [cargando, setCargando] = useState(false);
   const [terminado, setTerminado] = useState(false);
   const [iniciado, setIniciado] = useState(false);
+  const [mostrarTC, setMostrarTC] = useState(false);
+  const [tcAceptado, setTcAceptado] = useState(false);
+  const [respuestasFinalesTemp, setRespuestasFinalesTemp] = useState(null);
 
   const agregarMensaje = (texto, tipo) => {
     setMensajes(prev => [...prev, { texto, tipo, id: Date.now() }]);
@@ -368,7 +399,8 @@ export default function ChatBot() {
 
   const avanzar = (index, respuestasActuales) => {
     if (index >= preguntas.length) {
-      enviarResultados(respuestasActuales);
+      setRespuestasFinalesTemp(respuestasActuales);
+      setMostrarTC(true);
       return;
     }
 
@@ -385,6 +417,11 @@ export default function ChatBot() {
 
     setPreguntaActual(index);
     agregarMensaje(siguiente.mensaje, 'bot');
+  };
+
+  const aceptarTCyEnviar = () => {
+    setMostrarTC(false);
+    enviarResultados(respuestasFinalesTemp);
   };
 
   const enviarResultados = async (respuestasFinales) => {
@@ -466,6 +503,99 @@ export default function ChatBot() {
       fontFamily: 'Trebuchet MS, Verdana, sans-serif',
       display: 'flex', flexDirection: 'column'
     }}>
+
+      {/* POPUP T&C */}
+      {mostrarTC && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px',
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 20,
+            maxWidth: 560, width: '100%',
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+          }}>
+            {/* Header popup */}
+            <div style={{
+              background: '#5B9B3C', borderRadius: '20px 20px 0 0',
+              padding: '20px 24px',
+            }}>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}>Antes de continuar</div>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: '#fff' }}>
+                Términos y Condiciones
+              </div>
+            </div>
+
+            {/* Resumen visual */}
+            <div style={{ padding: '20px 24px', background: '#EBF5E4', borderBottom: '1px solid #E0DBD0' }}>
+              <div style={{ fontSize: 13, color: '#3B6D11', lineHeight: 1.7 }}>
+                <div style={{ marginBottom: 6 }}>✅ Los resultados son <strong>orientativos</strong>, no diagnósticos médicos.</div>
+                <div style={{ marginBottom: 6 }}>✅ Nunca sustituyen la consulta con un profesional de la salud.</div>
+                <div style={{ marginBottom: 6 }}>✅ Los profesionales afiliados (como Rocío Fábregas) actúan de forma independiente.</div>
+                <div>✅ Tus datos se tratan conforme al RGPD y no se ceden a terceros.</div>
+              </div>
+            </div>
+
+            {/* Texto legal completo scrollable */}
+            <div style={{
+              flex: 1, overflowY: 'auto',
+              padding: '20px 24px',
+              fontSize: 11, color: '#6B6860', lineHeight: 1.8,
+              whiteSpace: 'pre-wrap',
+            }}>
+              {TC_TEXTO}
+            </div>
+
+            {/* Checkbox + botones */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E0DBD0' }}>
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                fontSize: 13, color: '#1E1E1A', cursor: 'pointer',
+                marginBottom: 16,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={tcAceptado}
+                  onChange={e => setTcAceptado(e.target.checked)}
+                  style={{ marginTop: 2, accentColor: '#5B9B3C', width: 16, height: 16, flexShrink: 0 }}
+                />
+                He leído y acepto los Términos y Condiciones y la Política de Privacidad de mymetaboliq.com
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setMostrarTC(false)}
+                  style={{
+                    flex: 1, background: '#F7F4EE', color: '#6B6860',
+                    border: '1px solid #E0DBD0', padding: '12px',
+                    borderRadius: 100, fontSize: 13, cursor: 'pointer',
+                    fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={aceptarTCyEnviar}
+                  disabled={!tcAceptado}
+                  style={{
+                    flex: 2,
+                    background: tcAceptado ? '#5B9B3C' : '#C8E8B0',
+                    color: '#fff', border: 'none', padding: '12px',
+                    borderRadius: 100, fontSize: 13, fontWeight: 700,
+                    cursor: tcAceptado ? 'pointer' : 'not-allowed',
+                    fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  Acepto y ver mi resultado →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{
