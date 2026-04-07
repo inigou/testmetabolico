@@ -38,110 +38,6 @@ const preguntasSugeridas = [
   { emoji: '💧', texto: '¿Cuánta agua debo beber al día?' },
 ];
 
-const planes = {
-  hipertrofia: {
-    dieta: [
-      { dia: 'Lunes', desayuno: 'Avena + proteína + plátano', comida: 'Arroz integral + pollo 200g + brócoli', cena: 'Salmón + patata dulce + espinacas', snack: 'Yogur griego + nueces' },
-      { dia: 'Martes', desayuno: 'Huevos x3 + tostada integral + aguacate', comida: 'Pasta integral + ternera + tomate', cena: 'Pechuga + quinoa + judías verdes', snack: 'Batido proteína' },
-      { dia: 'Miércoles', desayuno: 'Tortitas avena + miel + frutos rojos', comida: 'Lentejas + arroz + ensalada', cena: 'Merluza + boniato + guisantes', snack: 'Requesón + fruta' },
-      { dia: 'Jueves', desayuno: 'Avena + leche + plátano + almendras', comida: 'Arroz + pechuga + pimientos', cena: 'Atún + patata + espárragos', snack: 'Batido proteína + plátano' },
-      { dia: 'Viernes', desayuno: 'Huevos x2 + jamón + fruta', comida: 'Quinoa + salmón + aguacate', cena: 'Ternera 150g + arroz + verduras', snack: 'Yogur griego + granola' },
-      { dia: 'Sábado', desayuno: 'Pancakes proteicos', comida: 'Hamburguesa casera + boniato', cena: 'Pollo al horno + patatas + ensalada', snack: 'Batido proteína' },
-      { dia: 'Domingo', desayuno: 'Tostadas + huevos + aguacate', comida: 'Bacalao + arroz + verduras', cena: 'Sopa de verduras + pollo', snack: 'Fruta + nueces' },
-    ],
-    ejercicios: [
-      { dia: 'Lunes — Pecho y tríceps', tipo: 'Fuerza', ejercicios: ['Press banca 4x8', 'Press inclinado 3x10', 'Aperturas 3x12', 'Fondos 3x10', 'Extensiones tríceps 3x12'] },
-      { dia: 'Martes — Espalda y bíceps', tipo: 'Fuerza', ejercicios: ['Dominadas 4x6', 'Remo barra 4x8', 'Jalón 3x10', 'Curl bíceps 3x12', 'Martillo 3x12'] },
-      { dia: 'Miércoles — Descanso activo', tipo: 'Cardio suave', ejercicios: ['Caminata 30 min', 'Estiramientos 15 min'] },
-      { dia: 'Jueves — Hombros', tipo: 'Fuerza', ejercicios: ['Press militar 4x8', 'Elevaciones laterales 3x12', 'Pájaros 3x12', 'Encogimientos 3x15'] },
-      { dia: 'Viernes — Pierna', tipo: 'Fuerza', ejercicios: ['Sentadilla 4x8', 'Prensa 3x10', 'Extensiones 3x12', 'Curl femoral 3x12', 'Gemelos 4x15'] },
-      { dia: 'Sábado — Full body', tipo: 'Funcional', ejercicios: ['Clean & press 3x8', 'Thrusters 3x10', 'Pull-ups 3x8'] },
-      { dia: 'Domingo — Descanso', tipo: 'Recuperación', ejercicios: ['Descanso completo', 'Yoga opcional 20 min'] },
-    ],
-    compra: {
-      'Proteínas': ['Pechugas pollo x6', 'Salmón 500g', 'Atún x4 latas', 'Huevos x12', 'Ternera magra 400g'],
-      'Hidratos': ['Arroz integral 1kg', 'Avena 500g', 'Pasta integral 500g', 'Boniato x4'],
-      'Verduras': ['Brócoli x2', 'Espinacas', 'Pimientos x3', 'Espárragos', 'Judías verdes'],
-      'Grasas': ['Aguacate x4', 'Nueces 200g', 'Almendras 200g', 'Aceite oliva'],
-      'Lácteos': ['Yogur griego x6', 'Leche 1L', 'Requesón 500g'],
-    },
-    suplementos: [
-      { nombre: 'Proteína whey', dosis: '1 dosis post-entreno (25-30g)', prioridad: 'Esencial', motivo: 'Recuperación y síntesis muscular.' },
-      { nombre: 'Creatina monohidrato', dosis: '5g/día', prioridad: 'Esencial', motivo: 'Aumenta fuerza y volumen. El más estudiado.' },
-      { nombre: 'Omega-3', dosis: '2-3g/día con comidas', prioridad: 'Recomendado', motivo: 'Reduce inflamación post-ejercicio.' },
-      { nombre: 'Magnesio bisglicinato', dosis: '300mg antes de dormir', prioridad: 'Recomendado', motivo: 'Mejora sueño y recuperación muscular.' },
-    ],
-  },
-  definicion: {
-    dieta: [
-      { dia: 'Lunes', desayuno: 'Claras x4 + espinacas + café', comida: 'Pollo 150g + ensalada grande', cena: 'Merluza al vapor + verduras', snack: 'Manzana + 10 almendras' },
-      { dia: 'Martes', desayuno: 'Yogur griego 0% + frutos rojos', comida: 'Atún + quinoa 60g + tomate', cena: 'Gambas + brócoli', snack: 'Pepino + humus' },
-      { dia: 'Miércoles', desayuno: 'Tortilla x2 + champiñones', comida: 'Salmón 150g + espárragos', cena: 'Pavo 130g + judías verdes', snack: 'Batido proteína con agua' },
-      { dia: 'Jueves', desayuno: 'Avena 40g + proteína + canela', comida: 'Pollo 150g + arroz 60g + pimientos', cena: 'Bacalao + coliflor', snack: 'Naranja + nueces x6' },
-      { dia: 'Viernes', desayuno: 'Claras x3 + aguacate 1/4', comida: 'Ensalada atún + garbanzos', cena: 'Lubina + verduras', snack: 'Yogur griego 0%' },
-      { dia: 'Sábado', desayuno: 'Huevos x2 + jamón + café', comida: 'Libre controlado (máx 600kcal)', cena: 'Pechuga + ensalada', snack: 'Proteína + agua' },
-      { dia: 'Domingo', desayuno: 'Tortitas avena sin azúcar', comida: 'Salmón + boniato + brócoli', cena: 'Caldo + pollo + verduras', snack: 'Fruta temporada' },
-    ],
-    ejercicios: [
-      { dia: 'Lunes — HIIT', tipo: 'Cardio intenso', ejercicios: ['Calentamiento 5 min', '8 rondas 30seg/30seg', 'Burpees 3x10', 'Mountain climbers 3x20'] },
-      { dia: 'Martes — Fuerza superior', tipo: 'Fuerza', ejercicios: ['Press banca 3x12', 'Remo 3x12', 'Hombros 3x15', 'Bíceps 3x15', 'Tríceps 3x15'] },
-      { dia: 'Miércoles — Cardio LISS', tipo: 'Cardio suave', ejercicios: ['Caminata rápida 45 min', 'FC objetivo 60-65%'] },
-      { dia: 'Jueves — Fuerza inferior', tipo: 'Fuerza', ejercicios: ['Sentadilla 3x12', 'Peso muerto rumano 3x12', 'Zancadas 3x10', 'Hip thrust 3x15'] },
-      { dia: 'Viernes — Full body + core', tipo: 'Funcional', ejercicios: ['Circuit 4 rondas', 'Planchas 60 seg', 'Russian twist 3x20'] },
-      { dia: 'Sábado — Cardio libre', tipo: 'Cardio', ejercicios: ['Actividad favorita 45-60 min'] },
-      { dia: 'Domingo — Descanso', tipo: 'Recuperación', ejercicios: ['Yoga 30 min', 'Estiramientos'] },
-    ],
-    compra: {
-      'Proteínas magras': ['Pechuga x6', 'Merluza 500g', 'Claras cartón', 'Atún x6', 'Gambas 300g'],
-      'Verduras': ['Espinacas x2', 'Brócoli x2', 'Pepino x3', 'Tomate x6', 'Coliflor'],
-      'Hidratos moderados': ['Avena 500g', 'Arroz integral 500g', 'Boniato x3', 'Garbanzos x2'],
-      'Grasas': ['Aguacate x3', 'Nueces 150g', 'Aceite oliva', 'Semillas chía'],
-      'Otros': ['Yogur griego 0% x6', 'Limones x4', 'Especias', 'Caldo verduras'],
-    },
-    suplementos: [
-      { nombre: 'Proteína whey isolada', dosis: '1 dosis post-entreno', prioridad: 'Esencial', motivo: 'Preserva músculo en déficit calórico.' },
-      { nombre: 'L-Carnitina', dosis: '2g antes del cardio', prioridad: 'Recomendado', motivo: 'Facilita uso de grasa como energía.' },
-      { nombre: 'Cafeína', dosis: '200mg 30 min antes entreno', prioridad: 'Recomendado', motivo: 'Aumenta oxidación de grasas.' },
-      { nombre: 'Multivitamínico', dosis: '1 cápsula con desayuno', prioridad: 'Recomendado', motivo: 'Cubre micronutrientes en déficit calórico.' },
-    ],
-  },
-  slow_aging: {
-    dieta: [
-      { dia: 'Lunes', desayuno: 'Té verde + avena + arándanos + lino', comida: 'Salmón + quinoa + espinacas + cúrcuma', cena: 'Sopa miso + tofu + algas', snack: 'Nueces x10 + té matcha' },
-      { dia: 'Martes', desayuno: 'Smoothie verde: espinacas + plátano + jengibre', comida: 'Atún + garbanzos + tomate + aceitunas', cena: 'Lubina + verduras + limón', snack: 'Chocolate negro 85% x2' },
-      { dia: 'Miércoles', desayuno: 'Huevos x2 + aguacate + tomate + AOVE', comida: 'Lentejas + verduras + cúrcuma', cena: 'Sardinas + ensalada + pan integral', snack: 'Kéfir + frutos rojos' },
-      { dia: 'Jueves', desayuno: 'Porridge + miel cruda + frambuesas + canela', comida: 'Pollo ecológico + boniato + brócoli', cena: 'Crema calabaza + semillas', snack: 'Almendras x15 + manzana' },
-      { dia: 'Viernes', desayuno: 'Kéfir + granola sin azúcar + kiwi', comida: 'Caballa + arroz integral + rúcula', cena: 'Gazpacho + huevo + aguacate', snack: 'Té verde + nueces brasil x3' },
-      { dia: 'Sábado', desayuno: 'Tostadas masa madre + AOVE + tomate', comida: 'Paella de verduras', cena: 'Salmón marinado + pepino + sésamo', snack: 'Smoothie antioxidante' },
-      { dia: 'Domingo', desayuno: 'Acai bowl + plátano + coco + semillas', comida: 'Cocido de legumbres', cena: 'Sopa miso + vegetales', snack: 'Fruta temporada' },
-    ],
-    ejercicios: [
-      { dia: 'Lunes — Fuerza suave', tipo: 'Fuerza + movilidad', ejercicios: ['Sentadilla corporal 3x15', 'Flexiones inclinadas 3x10', 'Remo banda 3x12', 'Puente glúteo 3x15'] },
-      { dia: 'Martes — Caminata', tipo: 'Cardio suave', ejercicios: ['Caminata naturaleza 45 min', 'Respiración diafragmática 10 min'] },
-      { dia: 'Miércoles — Yoga', tipo: 'Movilidad', ejercicios: ['Sesión yoga 40 min', 'Meditación 10 min'] },
-      { dia: 'Jueves — Funcional', tipo: 'Fuerza', ejercicios: ['Peso muerto ligero 3x12', 'Press hombros 3x12', 'Zancadas 3x10', 'Plancha 3x45seg'] },
-      { dia: 'Viernes — Zona 2', tipo: 'Cardio longevidad', ejercicios: ['Bici suave 30 min', 'FC máx 130 ppm', 'Zona 2 para longevidad'] },
-      { dia: 'Sábado — Social', tipo: 'Bienestar', ejercicios: ['Actividad social al aire libre', 'Senderismo / baile / golf'] },
-      { dia: 'Domingo — Recuperación', tipo: 'Recuperación', ejercicios: ['Sauna o baño caliente 20 min', 'Automasaje o estiramientos'] },
-    ],
-    compra: {
-      'Superalimentos': ['Arándanos 300g', 'Té verde x20', 'Cúrcuma polvo', 'Jengibre fresco', 'Chocolate 85% x2'],
-      'Proteínas': ['Salmón salvaje 500g', 'Sardinas x4', 'Caballa x2', 'Huevos ecológicos x12', 'Tofu 400g'],
-      'Verduras y frutas': ['Espinacas x2', 'Brócoli x2', 'Aguacate x4', 'Kiwi x6', 'Frutos rojos'],
-      'Fermentados': ['Kéfir 500ml', 'Miso pasta', 'Chucrut 400g', 'Yogur natural x4'],
-      'Grasas': ['AOVE 1L', 'Nueces 200g', 'Almendras 200g', 'Semillas lino', 'Semillas chía'],
-    },
-    suplementos: [
-      { nombre: 'NMN o NR (NAD+)', dosis: '250-500mg por la mañana', prioridad: 'Esencial', motivo: 'El suplemento de slow aging más estudiado.' },
-      { nombre: 'Resveratrol', dosis: '500mg con comida grasa', prioridad: 'Esencial', motivo: 'Activa vías de longevidad.' },
-      { nombre: 'Omega-3 EPA+DHA', dosis: '2-3g/día', prioridad: 'Esencial', motivo: 'Reduce inflamación crónica.' },
-      { nombre: 'Vitamina D3 + K2', dosis: '4000 UI D3 + 100mcg K2', prioridad: 'Esencial', motivo: 'Clave para huesos, inmunidad y longevidad.' },
-      { nombre: 'Magnesio glicinato', dosis: '300mg antes de dormir', prioridad: 'Recomendado', motivo: 'Mejora sueño profundo y reparación celular.' },
-      { nombre: 'Colágeno hidrolizado', dosis: '10g en ayunas', prioridad: 'Recomendado', motivo: 'Mantiene piel, articulaciones y tejido joven.' },
-    ],
-  },
-};
-
 export default function Dashboard() {
   const [email, setEmail] = useState('');
   const [datos, setDatos] = useState(null);
@@ -272,14 +168,53 @@ export default function Dashboard() {
     }
   };
 
-  const generarPlan = () => {
+  const generarPlan = async () => {
     setGenerando(true);
-    setTimeout(() => {
-      const planBase = planes[objetivoActivo] || planes.slow_aging;
-      setPlanGenerado(planBase);
-      setTabActivo('dieta');
+
+    const scores = [
+      { nombre: 'Actividad física', valor: ultimo?.efh_score },
+      { nombre: 'Composición corporal', valor: ultimo?.eco_score },
+      { nombre: 'Nutrición', valor: ultimo?.nut_score },
+      { nombre: 'Descanso', valor: ultimo?.des_score },
+      { nombre: 'Vitalidad', valor: ultimo?.vit_score },
+    ];
+    const mejor = scores.reduce((a, b) => a.valor > b.valor ? a : b);
+    const peor = scores.reduce((a, b) => a.valor < b.valor ? a : b);
+
+    try {
+      const res = await fetch('/api/coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'plan',
+          perfil: {
+            objetivo: objetivos.find(o => o.id === objetivoActivo)?.nombre,
+            icm: ultimo?.icm_total,
+            categoria: ultimo?.icm_total >= 80 ? 'Metabolismo óptimo' : ultimo?.icm_total >= 65 ? 'Metabolismo activo' : ultimo?.icm_total >= 50 ? 'Metabolismo moderado' : 'Metabolismo lento',
+            edad_metabolica: ultimo?.edad_metabolica,
+            mejor_bloque: mejor.nombre,
+            peor_bloque: peor.nombre,
+            eco: ultimo?.eco_score,
+            efh: ultimo?.efh_score,
+            nut: ultimo?.nut_score,
+            des: ultimo?.des_score,
+            vit: ultimo?.vit_score,
+          }
+        }),
+      });
+      const data = await res.json();
+      if (data.plan) {
+        setPlanGenerado(data.plan);
+        setTabActivo('dieta');
+      } else {
+        throw new Error('Sin plan');
+      }
+    } catch {
+      setPlanGenerado(null);
+      setObjetivoActivo(null);
+    } finally {
       setGenerando(false);
-    }, 2000);
+    }
   };
 
   const descargarPDF = () => {
@@ -643,17 +578,35 @@ export default function Dashboard() {
                 </div>
 
                 <div style={{ padding: '16px 20px' }}>
-                  {tabActivo === 'dieta' && planGenerado.dieta.map((dia, i) => (
-                    <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < planGenerado.dieta.length - 1 ? `1px solid ${C.light}` : 'none' }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.orange, marginBottom: 6 }}>{dia.dia}</div>
-                      {['desayuno', 'comida', 'cena', 'snack'].map(comida => (
-                        <div key={comida} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
-                          <span style={{ fontSize: 10, color: '#9A9790', minWidth: 60, textTransform: 'capitalize' }}>{comida}:</span>
-                          <span style={{ fontSize: 11, color: C.dark }}>{dia[comida]}</span>
+
+                  {tabActivo === 'dieta' && (
+                    <>
+                      {planGenerado.directrices && planGenerado.directrices.length > 0 && (
+                        <div style={{ background: C.greenPale, border: '1px solid #C8E8B0', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#3B6D11', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            📋 Directrices generales
+                          </div>
+                          {planGenerado.directrices.map((d, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
+                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, marginTop: 5 }} />
+                              <span style={{ fontSize: 12, color: C.dark, lineHeight: 1.5 }}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {planGenerado.dieta.map((dia, i) => (
+                        <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < planGenerado.dieta.length - 1 ? `1px solid ${C.light}` : 'none' }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.orange, marginBottom: 6 }}>{dia.dia}</div>
+                          {['desayuno', 'comida', 'cena', 'snack'].map(comida => (
+                            <div key={comida} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
+                              <span style={{ fontSize: 10, color: '#9A9790', minWidth: 60, textTransform: 'capitalize' }}>{comida}:</span>
+                              <span style={{ fontSize: 11, color: C.dark }}>{dia[comida]}</span>
+                            </div>
+                          ))}
                         </div>
                       ))}
-                    </div>
-                  ))}
+                    </>
+                  )}
 
                   {tabActivo === 'ejercicios' && planGenerado.ejercicios.map((dia, i) => (
                     <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < planGenerado.ejercicios.length - 1 ? `1px solid ${C.light}` : 'none' }}>
