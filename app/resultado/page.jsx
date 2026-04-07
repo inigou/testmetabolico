@@ -417,7 +417,7 @@ export default function ResultadoPage() {
             Laura García, nutricionista clínica, trabaja con tu ICM para diseñar 
             una hoja de ruta metabólica realista y sostenible.
           </p>
-          <a href="mailto:laura@testmetabolico.com" style={{
+          <a href="mailto:tutestmetabolico@gmail.com" style={{
             display: "inline-block",
             background: C.orange, color: C.white,
             borderRadius: 12, padding: "14px 32px",

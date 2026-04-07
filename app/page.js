@@ -455,7 +455,7 @@ export default function LandingPage() {
                 "El ICM no es solo un número. Es un mapa. Trabajo con cada paciente para convertir 
                 ese mapa en un plan real, sostenible y adaptado a su vida."
               </p>
-              <a href="mailto:rocio@testmetabolico.com" style={{
+              <a href="mailto:tutestmetabolico@gmail.com" style={{
                 display: "inline-block",
                 background: C.green, color: C.white,
                 borderRadius: 10, padding: "12px 24px",
@@ -678,7 +678,7 @@ export default function LandingPage() {
           <div style={{ fontWeight: 800, color: "rgba(255,255,255,0.8)", fontSize: 16, marginBottom: 12 }}>
             🌿 testmetabólico
           </div>
-          <div>© 2025 testmetabolico.com · Todos los derechos reservados</div>
+          <div>© 2025 mymteaboliq.com · Todos los derechos reservados</div>
           <div style={{ marginTop: 8 }}>
             El test ICM es orientativo y no sustituye el diagnóstico médico profesional.
           </div>
@@ -689,7 +689,7 @@ export default function LandingPage() {
             <a href="/cookies" style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, textDecoration: "none" }}>
               Cookies
             </a>
-            <a href="mailto:hola@testmetabolico.com" style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, textDecoration: "none" }}>
+            <a href="mailto:tutestmetabolico@gmail.com" style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, textDecoration: "none" }}>
               Contacto
             </a>
           </div>

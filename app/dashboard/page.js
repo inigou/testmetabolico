@@ -197,7 +197,7 @@ ${s.nombre} — ${s.prioridad}
 Dosis: ${s.dosis}
 ${s.motivo}`).join('\n')}
 
-testmetabolico.com`;
+mymetaboliq.com`;
 
     const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
