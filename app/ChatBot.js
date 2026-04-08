@@ -1,10 +1,28 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+// ─────────────────────────────────────────────────────────────────
+// PREGUNTAS v2 — test ICM optimizado
+// Campos nuevos vs v1:
+//   ECO: C_cinturon, C_distribucion, C_hinchazón, C_fluctuacion,
+//        C_tono, C_fuerza_prehensil, C_sit_to_stand
+//   EFH: F_dias, F_tipo, F_sedentarismo, F_talk_test,
+//        F_recuperacion, F_avd, F_energia_fisica
+//   NUT: N_aove, N_verduras, N_legumbres, N_pescado,
+//        N_frutos_secos, N_ultraprocesados, N_proteina,
+//        N_alcohol, N_antojo_tarde
+//   DES: D_horas, D_calidad, D_somnolencia, D_social_jet_lag,
+//        D_pantallas, D_cafeina, D_estres
+//   VIT: V_digestion, V_deterioro, V_brain_fog, V_vitalidad
+// Datos base sin cambio: C1, C2, C3, C4, C5, C6
+// ─────────────────────────────────────────────────────────────────
 
 const preguntas = [
+
+  // ── INICIO ──────────────────────────────────────────────────────
   {
     id: 'bienvenida',
-    mensaje: '¡Hola! 👋 Soy tu asistente metabólico. Voy a ayudarte a descubrir tu edad metabólica real en solo 4 minutos. ¿Empezamos?',
+    mensaje: '¡Hola! 👋 Soy tu asistente metabólico. Voy a ayudarte a descubrir tu edad metabólica real en solo 5 minutos. ¿Empezamos?',
     tipo: 'opciones',
     campo: null,
     opciones: ['¡Sí, vamos! 🚀', 'Cuéntame más primero'],
@@ -16,6 +34,8 @@ const preguntas = [
     campo: 'tiene_bascula',
     opciones: ['Sí, tengo datos', 'No, no tengo'],
   },
+
+  // ── DATOS BASE ──────────────────────────────────────────────────
   {
     id: 'nombre',
     mensaje: '¿Cómo te llamas?',
@@ -51,260 +71,268 @@ const preguntas = [
     campo: 'C4',
     placeholder: 'Ej: 72',
   },
+  // Solo si tiene_bascula === 'Sí, tengo datos'
+  // tipo 'numero_opcional': muestra input numérico + botón "No tengo este dato"
   {
     id: 'grasa',
-    mensaje: '¿Cuál es tu porcentaje de grasa corporal?',
-    tipo: 'numero',
+    mensaje: '¿Cuál es tu porcentaje de grasa corporal? Si no lo tienes exacto, pulsa "No lo sé".',
+    tipo: 'numero_opcional',
     campo: 'C5',
     placeholder: 'Ej: 22',
-    opcional: true,
   },
   {
     id: 'musculo',
-    mensaje: '¿Cuál es tu porcentaje de masa muscular?',
-    tipo: 'numero',
+    mensaje: '¿Cuál es tu porcentaje de masa muscular? Si no lo tienes, pulsa "No lo sé".',
+    tipo: 'numero_opcional',
     campo: 'C6',
     placeholder: 'Ej: 38',
-    opcional: true,
   },
+
+  // ── BLOQUE ECO — Composición corporal ───────────────────────────
   {
-    id: 'grasa_visible',
-    mensaje: '¿Notas grasa acumulada visible en tu cuerpo?',
+    id: 'eco_cinturon',
+    mensaje: '¿Al abrocharte el cinturón, usas el mismo agujero que hace 2 años?',
     tipo: 'opciones',
-    campo: 'E_grasa_visible',
-    opciones: ['Nada', 'Algo', 'Bastante', 'Mucha'],
+    campo: 'C_cinturon',
+    opciones: ['Más suelto que antes', 'El mismo agujero', '1-2 agujeros más apretado', 'Mucho más apretado'],
   },
   {
-    id: 'abdomen_actual',
-    mensaje: '¿Cómo ves tu abdomen ahora mismo?',
+    id: 'eco_distribucion',
+    mensaje: 'Cuando te sientas, ¿el pantalón aprieta más en la cintura que en las caderas?',
     tipo: 'opciones',
-    campo: 'E_abdomen',
-    opciones: ['Plano', 'Suave', 'Redondo', 'Prominente'],
+    campo: 'C_distribucion',
+    opciones: ['Me queda bien en ambos sitios', 'Aprieta igual en cintura y caderas', 'Aprieta claramente más en cintura', 'Mucho más en cintura, caderas holgadas'],
   },
   {
-    id: 'barriga_visible',
-    mensaje: '¿Tienes barriga o michelines visibles?',
+    id: 'eco_hinchazón',
+    mensaje: '¿Notas hinchazón o pesadez en el abdomen tras las comidas?',
     tipo: 'opciones',
-    campo: 'E_barriga',
-    opciones: ['No', 'Leve', 'Moderada', 'Bastante'],
+    campo: 'C_hinchazón',
+    opciones: ['Nunca o casi nunca', 'Ocasionalmente (1-2 veces/sem)', 'Frecuentemente (3-4 veces/sem)', 'Casi siempre tras comer'],
   },
   {
-    id: 'fuerza_percibida',
-    mensaje: '¿Cómo de fuerte te sientes comparado con la mayoría de personas de tu edad? (1 muy débil — 10 muy fuerte)',
-    tipo: 'escala',
-    campo: 'E6',
-  },
-  {
-    id: 'musculo_definido',
-    mensaje: '¿Notas músculo definido en brazos o piernas?',
+    id: 'eco_fluctuacion',
+    mensaje: '¿Tu peso ha variado más de 3 kg en los últimos 6 meses sin que lo hayas buscado?',
     tipo: 'opciones',
-    campo: 'E_musculo',
-    opciones: ['Sí, bien definido', 'Algo de definición', 'Poco', 'Nada'],
+    campo: 'C_fluctuacion',
+    opciones: ['No, mi peso es estable', 'He bajado más de 3 kg sin buscarlo', 'He subido más de 3 kg sin buscarlo', 'Fluctúa constantemente sin control'],
   },
   {
-    id: 'ropa_año',
-    mensaje: '¿Tu ropa de hace 1 año te queda igual?',
+    id: 'eco_tono',
+    mensaje: '¿Cómo describirías el tono muscular visible en brazos y piernas?',
     tipo: 'opciones',
-    campo: 'E5',
-    opciones: ['Más suelta', 'Igual', 'Más ajustada', 'Muy ajustada'],
+    campo: 'C_tono',
+    opciones: ['Músculos visibles y bien definidos', 'Algo de definición muscular', 'Poco tono, músculo poco visible', 'Sin tono aparente'],
   },
   {
-    id: 'cansancio_esfuerzo',
-    mensaje: '¿Te cansas haciendo esfuerzos cortos como subir escaleras?',
+    id: 'eco_fuerza',
+    mensaje: '¿Puedes abrir un bote de cristal nuevo y apretado sin ayuda?',
     tipo: 'opciones',
-    campo: 'E_cansancio',
-    opciones: ['Nunca', 'A veces', 'Frecuentemente', 'Siempre'],
+    campo: 'C_fuerza_prehensil',
+    opciones: ['Sí, sin dificultad', 'Sí, con algo de esfuerzo', 'Me cuesta, a veces no puedo', 'No, necesito ayuda o herramienta'],
   },
   {
-    id: 'distribucion_grasa',
-    mensaje: '¿Dónde tiendes a acumular más grasa?',
+    id: 'eco_sit_stand',
+    mensaje: '¿Puedes levantarte del suelo desde posición sentada sin apoyar las manos?',
     tipo: 'opciones',
-    campo: 'C12',
-    opciones: ['Abdomen', 'Caderas y piernas', 'Distribución uniforme'],
+    campo: 'C_sit_to_stand',
+    opciones: ['Sí, fácilmente y con control', 'Sí, pero necesito un pequeño impulso', 'Con dificultad, apoyo una mano', 'No puedo sin apoyar ambas manos'],
   },
+
+  // ── BLOQUE EFH — Actividad física ───────────────────────────────
   {
-    id: 'retencion',
-    mensaje: '¿Notas retención de líquidos o hinchazón?',
-    tipo: 'opciones',
-    campo: 'C13',
-    opciones: ['Nunca', 'A veces', 'Frecuentemente'],
-  },
-  {
-    id: 'actividad_dias',
+    id: 'efh_dias',
     mensaje: '¿Cuántos días a la semana haces actividad física de más de 30 minutos?',
     tipo: 'opciones',
-    campo: 'F1',
-    opciones: ['0', '1-2', '3-4', '5+'],
+    campo: 'F_dias',
+    opciones: ['0 días', '1-2 días', '3-4 días', '5 días o más'],
   },
   {
-    id: 'actividad_tipo',
-    mensaje: '¿Qué tipo de actividad haces principalmente?',
+    id: 'efh_tipo',
+    mensaje: '¿Qué tipo de actividad física haces principalmente?',
     tipo: 'opciones',
-    campo: 'F2',
-    opciones: ['Ninguna', 'Caminata-Yoga', 'Fuerza-Cardio', 'Intenso'],
+    campo: 'F_tipo',
+    opciones: ['Ninguna', 'Caminar suave, movilidad o estiramientos', 'Cardio moderado o fuerza ligera', 'Fuerza progresiva, HIIT o deporte de competición'],
   },
   {
-    id: 'sedentarismo',
-    mensaje: '¿Cuántas horas al día pasas sentado?',
+    id: 'efh_sedentarismo',
+    mensaje: '¿Cuántas horas al día pasas sentado o con actividad sedentaria?',
     tipo: 'opciones',
-    campo: 'F3',
-    opciones: ['<4h', '4-8h', '>8h'],
+    campo: 'F_sedentarismo',
+    opciones: ['Menos de 4 horas', '4-6 horas', '6-8 horas', 'Más de 8 horas'],
   },
   {
-    id: 'energia',
-    mensaje: '¿Cómo valorarías tu nivel de energía diaria? (1 muy bajo — 10 excelente)',
-    tipo: 'escala',
-    campo: 'F4',
-  },
-  {
-    id: 'tiempo_rutina',
-    mensaje: '¿Cuánto tiempo llevas con tu rutina de ejercicio actual?',
+    id: 'efh_talk_test',
+    mensaje: '¿Puedes mantener una conversación normal caminando a paso rápido sin quedarte sin aliento?',
     tipo: 'opciones',
-    campo: 'F_tiempo_rutina',
-    opciones: ['Menos de 1 mes', '1-3 meses', '3-6 meses', 'Más de 6 meses'],
+    campo: 'F_talk_test',
+    opciones: ['Sí, sin ningún problema', 'Con algo de dificultad', 'Me cuesta bastante', 'No puedo, me falta el aire'],
   },
   {
-    id: 'recuperacion',
-    mensaje: '¿Cómo te recuperas después de entrenar?',
+    id: 'efh_recuperacion',
+    mensaje: 'Tras subir escaleras o un esfuerzo breve, ¿en cuánto tiempo recuperas la respiración normal?',
     tipo: 'opciones',
     campo: 'F_recuperacion',
-    opciones: ['Muy bien, sin agujetas', 'Bien, agujetas leves', 'Regular, tardo en recuperar', 'Mal, siempre con agujetas'],
+    opciones: ['Menos de 1 minuto', '1-3 minutos', '3-5 minutos', 'Más de 5 minutos'],
   },
   {
-    id: 'calentamiento',
-    mensaje: '¿Haces calentamiento y estiramientos en tus entrenamientos?',
+    id: 'efh_avd',
+    mensaje: '¿Con qué facilidad realizas tareas físicas cotidianas como llevar bolsas, agacharte o levantarte del suelo?',
     tipo: 'opciones',
-    campo: 'F_calentamiento',
-    opciones: ['Siempre', 'A veces', 'Casi nunca', 'Nunca'],
+    campo: 'F_avd',
+    opciones: ['Sin ninguna dificultad', 'Con dificultad leve', 'Con dificultad moderada', 'Con mucha dificultad'],
   },
   {
-    id: 'cambio_cuerpo',
-    mensaje: '¿Con tu entrenamiento actual has notado cambios en tu cuerpo?',
+    id: 'efh_energia',
+    mensaje: '¿Cómo valoras tu nivel de energía durante el ejercicio o el esfuerzo físico? (1-10)',
+    tipo: 'escala',
+    campo: 'F_energia_fisica',
+  },
+
+  // ── BLOQUE NUT — Nutrición ───────────────────────────────────────
+  {
+    id: 'nut_aove',
+    mensaje: '¿Usas aceite de oliva virgen extra como grasa principal para cocinar y aliñar?',
     tipo: 'opciones',
-    campo: 'F_cambio_cuerpo',
-    opciones: ['Sí, muchos cambios', 'Sí, algo', 'Poco cambio', 'Ningún cambio'],
+    campo: 'N_aove',
+    opciones: ['Siempre, es mi única grasa de cocina', 'Casi siempre', 'A veces, alterno con otras grasas', 'Rara vez o nunca'],
   },
   {
-    id: 'comidas',
-    mensaje: '¿Cuántas comidas completas haces al día?',
+    id: 'nut_verduras',
+    mensaje: '¿Consumes verduras o ensalada en al menos 2 comidas al día?',
     tipo: 'opciones',
-    campo: 'N1',
-    opciones: ['1-2', '3', '4-5', '>5'],
+    campo: 'N_verduras',
+    opciones: ['Sí, todos los días', '4-5 días a la semana', '2-3 días a la semana', 'Menos de 2 días'],
   },
   {
-    id: 'proteina',
-    mensaje: '¿Incluyes proteínas en cada comida principal?',
+    id: 'nut_legumbres',
+    mensaje: '¿Consumes legumbres (lentejas, garbanzos, alubias) al menos 2 veces por semana?',
     tipo: 'opciones',
-    campo: 'N2',
-    opciones: ['Nunca', 'A veces', 'Casi siempre', 'Siempre'],
+    campo: 'N_legumbres',
+    opciones: ['Sí, 2 o más veces por semana', 'Una vez por semana', 'Ocasionalmente', 'Casi nunca o nunca'],
   },
   {
-    id: 'ultraprocesados',
-    mensaje: '¿Con qué frecuencia consumes ultraprocesados?',
+    id: 'nut_pescado',
+    mensaje: '¿Comes pescado azul (sardinas, caballa, salmón, boquerón) al menos 2 veces por semana?',
     tipo: 'opciones',
-    campo: 'N4',
-    opciones: ['Diario', '3-4sem', '1-2sem', 'Rara vez'],
+    campo: 'N_pescado',
+    opciones: ['Sí, 2 o más veces por semana', 'Una vez por semana', 'Ocasionalmente', 'Casi nunca o nunca'],
   },
   {
-    id: 'alcohol',
+    id: 'nut_frutos_secos',
+    mensaje: '¿Consumes un puñado de frutos secos (nueces, almendras) al menos 4 veces por semana?',
+    tipo: 'opciones',
+    campo: 'N_frutos_secos',
+    opciones: ['Sí, 4 o más veces por semana', '2-3 veces por semana', 'Una vez por semana', 'Casi nunca o nunca'],
+  },
+  {
+    id: 'nut_ultraprocesados',
+    mensaje: '¿Con qué frecuencia consumes ultraprocesados (bollería, snacks, comida rápida, refrescos azucarados)?',
+    tipo: 'opciones',
+    campo: 'N_ultraprocesados',
+    opciones: ['Rara vez o nunca', '1-2 veces por semana', '3-4 veces por semana', 'A diario'],
+  },
+  {
+    id: 'nut_proteina',
+    mensaje: '¿Incluyes una fuente de proteína en cada comida principal?',
+    tipo: 'opciones',
+    campo: 'N_proteina',
+    opciones: ['Siempre', 'Casi siempre', 'A veces', 'Rara vez'],
+  },
+  {
+    id: 'nut_alcohol',
     mensaje: '¿Con qué frecuencia consumes alcohol?',
     tipo: 'opciones',
-    campo: 'N5',
-    opciones: ['Varias/sem', '1sem', 'Ocasional', 'Nunca'],
+    campo: 'N_alcohol',
+    opciones: ['Nunca', 'Ocasional (menos de 1 vez/semana)', '1-2 veces por semana', '3 o más veces por semana'],
   },
   {
-    id: 'agua',
-    mensaje: '¿Cuántos litros de agua bebes al día?',
+    id: 'nut_antojo',
+    mensaje: '¿Tienes antojos intensos de azúcar o carbohidratos a media tarde (entre las 16h y las 18h)?',
     tipo: 'opciones',
-    campo: 'N6',
-    opciones: ['<1', '1-1.5', '1.5-2', '>2'],
+    campo: 'N_antojo_tarde',
+    opciones: ['Nunca o casi nunca', 'Ocasionalmente', 'Frecuentemente', 'Casi siempre, necesito algo dulce'],
   },
+
+  // ── BLOQUE DES — Descanso y estrés ──────────────────────────────
   {
-    id: 'objetivo',
-    mensaje: '¿Cuál es tu objetivo principal ahora mismo?',
+    id: 'des_horas',
+    mensaje: '¿Cuántas horas duermes de media por noche?',
     tipo: 'opciones',
-    campo: 'N7',
-    opciones: ['Definir', 'Masa muscular', 'Mantener', 'Rendimiento', 'Ninguno'],
+    campo: 'D_horas',
+    opciones: ['Menos de 5 horas', '5-6 horas', '7-8 horas', 'Más de 8 horas'],
   },
   {
-    id: 'sueno',
-    mensaje: '¿Cuántas horas duermes de media?',
-    tipo: 'opciones',
-    campo: 'D1',
-    opciones: ['<5', '5-6', '7-8', '>8'],
-  },
-  {
-    id: 'calidad_sueno',
-    mensaje: '¿Cómo de descansado te despiertas? (1 muy mal — 10 perfecto)',
+    id: 'des_calidad',
+    mensaje: '¿Cómo de descansado/a te despiertas habitualmente? (1 agotado/a — 10 completamente recuperado/a)',
     tipo: 'escala',
-    campo: 'D2',
+    campo: 'D_calidad',
   },
   {
-    id: 'hora_acostarse',
-    mensaje: '¿A qué hora te sueles acostar habitualmente?',
+    id: 'des_somnolencia',
+    mensaje: '¿Te quedas dormido/a involuntariamente en situaciones pasivas (TV, leyendo, reuniones tranquilas)?',
     tipo: 'opciones',
-    campo: 'D_hora_acostarse',
-    opciones: ['Antes de las 22h', '22h-23h', '23h-00h', 'Después de las 00h'],
+    campo: 'D_somnolencia',
+    opciones: ['Nunca', 'Raramente', 'Con cierta frecuencia', 'Frecuentemente'],
   },
   {
-    id: 'movil_antes_dormir',
-    mensaje: '¿Usas el móvil o pantallas justo antes de dormir?',
+    id: 'des_jet_lag',
+    mensaje: 'Los fines de semana, ¿duermes más de 2 horas extra respecto a los días laborables?',
     tipo: 'opciones',
-    campo: 'D_movil',
+    campo: 'D_social_jet_lag',
+    opciones: ['No, duermo lo mismo que entre semana', 'Duermo 1-2 horas más', 'Duermo más de 2 horas más', 'Recupero toda la semana los fines de semana'],
+  },
+  {
+    id: 'des_pantallas',
+    mensaje: '¿Usas el móvil, tablet o TV en los 30 minutos antes de dormir?',
+    tipo: 'opciones',
+    campo: 'D_pantallas',
     opciones: ['Nunca', 'A veces', 'Casi siempre', 'Siempre'],
   },
   {
-    id: 'cafeina_tarde',
+    id: 'des_cafeina',
     mensaje: '¿Tomas cafeína (café, té, refrescos) después de las 15h?',
     tipo: 'opciones',
     campo: 'D_cafeina',
-    opciones: ['Nunca', 'A veces', 'Frecuentemente', 'A diario'],
+    opciones: ['Nunca', 'Ocasionalmente', 'Frecuentemente', 'A diario'],
   },
   {
-    id: 'estres',
-    mensaje: '¿Cómo valorarías tu nivel de estrés diario? (1 muy bajo — 10 muy alto)',
+    id: 'des_estres',
+    mensaje: '¿Cómo valoras tu nivel de estrés sostenido en las últimas 4 semanas? (1 muy bajo — 10 muy alto)',
     tipo: 'escala',
-    campo: 'D4',
+    campo: 'D_estres',
   },
+
+  // ── BLOQUE VIT — Vitalidad ───────────────────────────────────────
   {
-    id: 'concentracion',
-    mensaje: '¿Cómo describirías tu nivel de concentración durante el día?',
+    id: 'vit_digestion',
+    mensaje: '¿Con qué frecuencia tienes hinchazón abdominal o gases tras las comidas?',
     tipo: 'opciones',
-    campo: 'V_concentracion',
-    opciones: ['Excelente', 'Buena', 'Regular', 'Mala'],
+    campo: 'V_digestion',
+    opciones: ['Nunca o casi nunca', 'Ocasionalmente', 'Frecuentemente', 'Casi siempre'],
   },
   {
-    id: 'ansiedad',
-    mensaje: '¿Tienes momentos de ansiedad o preocupación frecuente?',
+    id: 'vit_deterioro',
+    mensaje: '¿Tu rendimiento físico o mental ha empeorado en los últimos 6 meses sin causa aparente?',
     tipo: 'opciones',
-    campo: 'V_ansiedad',
-    opciones: ['Nunca', 'A veces', 'Frecuentemente', 'Casi siempre'],
+    campo: 'V_deterioro',
+    opciones: ['No, igual o mejor que hace 6 meses', 'Leve empeoramiento', 'Empeoramiento moderado y sostenido', 'Empeoramiento notable, me preocupa'],
   },
   {
-    id: 'vitalidad',
-    mensaje: '¿Tu cuerpo responde igual que hace unos años? (1 mucho peor — 10 igual o mejor)',
-    tipo: 'escala',
-    campo: 'V1',
-  },
-  {
-    id: 'claridad',
-    mensaje: '¿Cómo valorarías tu claridad mental diaria? (1 muy baja — 10 excelente)',
-    tipo: 'escala',
-    campo: 'V2',
-  },
-  {
-    id: 'digestion',
-    mensaje: '¿Cómo es tu digestión habitualmente?',
+    id: 'vit_brain_fog',
+    mensaje: '¿Tienes con frecuencia sensación de niebla mental (dificultad para concentrarte, pensamientos lentos)?',
     tipo: 'opciones',
-    campo: 'V3',
-    opciones: ['Pesada', 'Normal', 'Ligera', 'Muy ligera'],
+    campo: 'V_brain_fog',
+    opciones: ['Nunca', 'Ocasionalmente', 'Frecuentemente', 'Casi siempre'],
   },
   {
-    id: 'motivacion',
-    mensaje: '¿Cómo valorarías tu motivación diaria? (1 muy baja — 10 excelente)',
+    id: 'vit_vitalidad',
+    mensaje: '¿Cómo valoras tu vitalidad general comparada con personas de tu misma edad? (1 mucho peor — 10 igual o mejor)',
     tipo: 'escala',
-    campo: 'V4',
+    campo: 'V_vitalidad',
   },
+
+  // ── FINAL ────────────────────────────────────────────────────────
   {
     id: 'email',
     mensaje: '¡Casi terminamos! 🎉 ¿A qué email te enviamos tu resultado completo?',
@@ -314,13 +342,19 @@ const preguntas = [
   },
 ];
 
+// ─────────────────────────────────────────────────────────────────
+// MICROFEEDBACKS
+// ─────────────────────────────────────────────────────────────────
 const microfeedbacks = [
-  { despues: 'actividad_dias', mensaje: '💪 Perfecto, ya tengo tu perfil de actividad.' },
-  { despues: 'ultraprocesados', mensaje: '🥗 Genial, casi hemos terminado con nutrición.' },
-  { despues: 'sueno', mensaje: '😴 Bien, ahora el bloque de descanso.' },
-  { despues: 'vitalidad', mensaje: '🧠 Último bloque, ya casi lo tenemos.' },
+  { despues: 'eco_sit_stand', mensaje: '💪 Perfecto, ya tengo tu perfil de composición corporal.' },
+  { despues: 'efh_energia',   mensaje: '🏃 Genial, tu bloque de actividad completado.' },
+  { despues: 'nut_antojo',    mensaje: '🥗 Muy bien, nutrición lista.' },
+  { despues: 'des_estres',    mensaje: '😴 Descanso registrado. Último bloque, ya casi lo tenemos.' },
 ];
 
+// ─────────────────────────────────────────────────────────────────
+// TÉRMINOS Y CONDICIONES
+// ─────────────────────────────────────────────────────────────────
 const TC_TEXTO = `TÉRMINOS Y CONDICIONES DE USO — mymetaboliq.com
 Última actualización: abril 2025
 Titular: Iñigo Fábregas Unzurrunzaga · contacto: tutestmetabolico@gmail.com
@@ -349,50 +383,64 @@ Los datos personales facilitados — incluyendo el email y las respuestas al tes
 6. ACEPTACIÓN
 Al pulsar el botón de envío, el usuario declara haber leído, comprendido y aceptado íntegramente los presentes Términos y Condiciones, así como la Política de Privacidad de mymetaboliq.com.`;
 
+// ─────────────────────────────────────────────────────────────────
+// COMPONENTE PRINCIPAL
+// ─────────────────────────────────────────────────────────────────
 export default function ChatBot() {
-  const [mensajes, setMensajes] = useState([]);
-  const [preguntaActual, setPreguntaActual] = useState(0);
-  const [respuestas, setRespuestas] = useState({});
-  const [inputValor, setInputValor] = useState('');
-  const [cargando, setCargando] = useState(false);
-  const [terminado, setTerminado] = useState(false);
-  const [iniciado, setIniciado] = useState(false);
-  const [mostrarTC, setMostrarTC] = useState(false);
-  const [tcAceptado, setTcAceptado] = useState(false);
+  const [mensajes, setMensajes]                           = useState([]);
+  const [preguntaActual, setPreguntaActual]               = useState(0);
+  const [respuestas, setRespuestas]                       = useState({});
+  const [inputValor, setInputValor]                       = useState('');
+  const [cargando, setCargando]                           = useState(false);
+  const [terminado, setTerminado]                         = useState(false);
+  const [iniciado, setIniciado]                           = useState(false);
+  const [mostrarTC, setMostrarTC]                         = useState(false);
+  const [tcAceptado, setTcAceptado]                       = useState(false);
   const [respuestasFinalesTemp, setRespuestasFinalesTemp] = useState(null);
 
+  // ── Autoscroll ──────────────────────────────────────────────────
+  const mensajesEndRef     = useRef(null);
+  const scrollContainerRef = useRef(null);
+
+  useEffect(() => {
+    // Pequeño delay para que el DOM pinte el nuevo bubble antes de scrollear
+    const t = setTimeout(() => {
+      const el = scrollContainerRef.current; if (el) el.scrollTop = el.scrollHeight;
+    }, 80);
+    return () => clearTimeout(t);
+  }, [mensajes]);
+
+  // ── Helpers ─────────────────────────────────────────────────────
   const agregarMensaje = (texto, tipo) => {
-    setMensajes(prev => [...prev, { texto, tipo, id: Date.now() }]);
+    setMensajes(prev => [...prev, { texto, tipo, id: Date.now() + Math.random() }]);
   };
 
   const iniciarChat = () => {
     setIniciado(true);
-    setTimeout(() => {
-      agregarMensaje(preguntas[0].mensaje, 'bot');
-    }, 300);
+    setTimeout(() => agregarMensaje(preguntas[0].mensaje, 'bot'), 300);
   };
 
   const procesarRespuesta = (valor, campoOverride) => {
     const pregunta = preguntas[preguntaActual];
-    const campo = campoOverride || pregunta.campo;
+    const campo    = campoOverride || pregunta.campo;
 
     agregarMensaje(valor, 'usuario');
 
-    const nuevasRespuestas = campo ? { ...respuestas, [campo]: valor } : { ...respuestas };
+    const nuevasRespuestas = campo
+      ? { ...respuestas, [campo]: valor }
+      : { ...respuestas };
     setRespuestas(nuevasRespuestas);
     setInputValor('');
 
-    const feedback = microfeedbacks.find(f => f.despues === pregunta.id);
-    const siguienteIndex = preguntaActual + 1;
+    const feedback      = microfeedbacks.find(f => f.despues === pregunta.id);
+    const siguienteIdx  = preguntaActual + 1;
 
     setTimeout(() => {
       if (feedback) {
         agregarMensaje(feedback.mensaje, 'bot');
-        setTimeout(() => {
-          avanzar(siguienteIndex, nuevasRespuestas);
-        }, 800);
+        setTimeout(() => avanzar(siguienteIdx, nuevasRespuestas), 800);
       } else {
-        avanzar(siguienteIndex, nuevasRespuestas);
+        avanzar(siguienteIdx, nuevasRespuestas);
       }
     }, 400);
   };
@@ -403,10 +451,10 @@ export default function ChatBot() {
       setMostrarTC(true);
       return;
     }
-
     const siguiente = preguntas[index];
 
-    if (siguiente.id === 'grasa' && respuestasActuales.tiene_bascula === 'No, no tengo') {
+    // Saltar preguntas de báscula si el usuario no tiene datos
+    if (siguiente.id === 'grasa'  && respuestasActuales.tiene_bascula === 'No, no tengo') {
       avanzar(index + 1, respuestasActuales);
       return;
     }
@@ -424,61 +472,111 @@ export default function ChatBot() {
     enviarResultados(respuestasFinalesTemp);
   };
 
-  const enviarResultados = async (respuestasFinales) => {
+  // ── Envío a Make.com ────────────────────────────────────────────
+  const enviarResultados = async (r) => {
     setCargando(true);
     agregarMensaje('Calculando tu perfil metabólico... ⚡', 'bot');
 
     try {
       const payload = {
-        ...respuestasFinales,
-        tipo_test: 'completo',
-        F4: parseInt(respuestasFinales.F4) || 5,
-        D2: parseInt(respuestasFinales.D2) || 5,
-        D4: parseInt(respuestasFinales.D4) || 5,
-        V1: parseInt(respuestasFinales.V1) || 5,
-        V2: parseInt(respuestasFinales.V2) || 5,
-        V4: parseInt(respuestasFinales.V4) || 5,
-        C1: parseInt(respuestasFinales.C1) || 30,
-        C4: parseFloat(respuestasFinales.C4) || 70,
-        C5: parseFloat(respuestasFinales.C5) || '',
-        C6: parseFloat(respuestasFinales.C6) || '',
+        // Datos base
+        nombre:        r.nombre      || '',
+        email:         r.email       || '',
+        tiene_bascula: r.tiene_bascula || '',
+        tipo_test:     'v2',
+        C1: parseInt(r.C1)     || 30,
+        C2: r.C2               || '',
+        C3: parseFloat(r.C3)   || 170,
+        C4: parseFloat(r.C4)   || 70,
+        C5: parseFloat(r.C5)   || '',   // vacío si no tiene báscula
+        C6: parseFloat(r.C6)   || '',   // vacío si no tiene báscula
+
+        // ECO
+        C_cinturon:         r.C_cinturon         || '',
+        C_distribucion:     r.C_distribucion     || '',
+        C_hinchazón:        r.C_hinchazón        || '',
+        C_fluctuacion:      r.C_fluctuacion      || '',
+        C_tono:             r.C_tono             || '',
+        C_fuerza_prehensil: r.C_fuerza_prehensil || '',
+        C_sit_to_stand:     r.C_sit_to_stand     || '',
+
+        // EFH
+        F_dias:           r.F_dias           || '',
+        F_tipo:           r.F_tipo           || '',
+        F_sedentarismo:   r.F_sedentarismo   || '',
+        F_talk_test:      r.F_talk_test      || '',
+        F_recuperacion:   r.F_recuperacion   || '',
+        F_avd:            r.F_avd            || '',
+        F_energia_fisica: parseInt(r.F_energia_fisica) || 5,
+
+        // NUT
+        N_aove:            r.N_aove            || '',
+        N_verduras:        r.N_verduras        || '',
+        N_legumbres:       r.N_legumbres       || '',
+        N_pescado:         r.N_pescado         || '',
+        N_frutos_secos:    r.N_frutos_secos    || '',
+        N_ultraprocesados: r.N_ultraprocesados || '',
+        N_proteina:        r.N_proteina        || '',
+        N_alcohol:         r.N_alcohol         || '',
+        N_antojo_tarde:    r.N_antojo_tarde    || '',
+
+        // DES
+        D_horas:          r.D_horas          || '',
+        D_calidad:        parseInt(r.D_calidad)   || 5,
+        D_somnolencia:    r.D_somnolencia    || '',
+        D_social_jet_lag: r.D_social_jet_lag || '',
+        D_pantallas:      r.D_pantallas      || '',
+        D_cafeina:        r.D_cafeina        || '',
+        D_estres:         parseInt(r.D_estres)    || 5,
+
+        // VIT
+        V_digestion:  r.V_digestion  || '',
+        V_deterioro:  r.V_deterioro  || '',
+        V_brain_fog:  r.V_brain_fog  || '',
+        V_vitalidad:  parseInt(r.V_vitalidad) || 5,
       };
 
       await fetch('https://hook.eu1.make.com/59n8zt2vk9mx0fla857yludehqf3bi4x', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body:    JSON.stringify(payload),
       });
 
       setCargando(false);
       setTerminado(true);
-      agregarMensaje(`¡Listo ${respuestasFinales.nombre}! 🎉 Tu perfil metabólico está en camino. Revisa tu email en los próximos segundos.`, 'bot');
-
-    } catch (error) {
+      agregarMensaje(
+        `¡Listo ${r.nombre}! 🎉 Tu perfil metabólico está en camino. Revisa tu email en los próximos segundos.`,
+        'bot'
+      );
+    } catch {
       setCargando(false);
       agregarMensaje('Ups, algo salió mal. Inténtalo de nuevo.', 'bot');
     }
   };
 
   const escalaOpciones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const progreso       = Math.round((preguntaActual / preguntas.length) * 100);
 
+  // ── Pantalla de inicio ──────────────────────────────────────────
   if (!iniciado) {
     return (
       <div style={{
-        minHeight: '100vh', background: '#F7F4EE',
+        minHeight: '100dvh', background: '#F7F4EE',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'Trebuchet MS, Verdana, sans-serif', padding: '20px'
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif', padding: '20px',
       }}>
-        <div style={{ textAlign: 'center', maxWidth: '480px' }}>
+        <div style={{ textAlign: 'center', maxWidth: '480px', width: '100%' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧬</div>
           <h1 style={{
-            fontFamily: 'Georgia, serif', fontSize: '36px',
-            color: '#1E1E1A', marginBottom: '12px', lineHeight: '1.1'
+            fontFamily: 'Georgia, serif',
+            fontSize: 'clamp(28px, 6vw, 36px)',
+            color: '#1E1E1A', marginBottom: '12px', lineHeight: '1.1',
           }}>
-            Descubre tu edad <span style={{ color: '#E8621A', fontStyle: 'italic' }}>metabólica</span>
+            Descubre tu edad{' '}
+            <span style={{ color: '#E8621A', fontStyle: 'italic' }}>metabólica</span>
           </h1>
           <p style={{ fontSize: '15px', color: '#6B6860', marginBottom: '32px', lineHeight: '1.7' }}>
-            4 minutos · 100% gratis · Resultado inmediato
+            5 minutos · 100% gratis · Resultado inmediato
           </p>
           <button onClick={iniciarChat} style={{
             background: '#E8621A', color: '#fff',
@@ -486,7 +584,8 @@ export default function ChatBot() {
             borderRadius: '100px', fontSize: '15px',
             fontWeight: '600', cursor: 'pointer',
             fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-            boxShadow: '0 6px 24px rgba(232,98,26,0.35)'
+            boxShadow: '0 6px 24px rgba(232,98,26,0.35)',
+            width: '100%', maxWidth: '280px',
           }}>
             Empezar el test →
           </button>
@@ -497,98 +596,60 @@ export default function ChatBot() {
 
   const pregunta = preguntas[preguntaActual];
 
+  // ── Chat principal ──────────────────────────────────────────────
   return (
     <div style={{
-      minHeight: '100vh', background: '#F7F4EE',
+      height: '100dvh',
+      background: '#F7F4EE',
       fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-      display: 'flex', flexDirection: 'column'
+      display: 'flex', flexDirection: 'column',
+      overflow: 'hidden',
     }}>
 
-      {/* POPUP T&C */}
+      {/* ── POPUP T&C ──────────────────────────────────────────── */}
       {mostrarTC && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1000,
           background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '20px',
+          padding: '16px',
         }}>
           <div style={{
             background: '#fff', borderRadius: 20,
             maxWidth: 560, width: '100%',
-            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            maxHeight: '90dvh', display: 'flex', flexDirection: 'column',
             boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
           }}>
-            {/* Header popup */}
-            <div style={{
-              background: '#5B9B3C', borderRadius: '20px 20px 0 0',
-              padding: '20px 24px',
-            }}>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}>Antes de continuar</div>
-              <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: '#fff' }}>
-                Términos y Condiciones
-              </div>
+            <div style={{ background: '#5B9B3C', borderRadius: '20px 20px 0 0', padding: '18px 24px' }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}>Antes de continuar</div>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: 19, color: '#fff' }}>Términos y Condiciones</div>
             </div>
-
-            {/* Resumen visual */}
-            <div style={{ padding: '20px 24px', background: '#EBF5E4', borderBottom: '1px solid #E0DBD0' }}>
+            <div style={{ padding: '16px 24px', background: '#EBF5E4', borderBottom: '1px solid #E0DBD0' }}>
               <div style={{ fontSize: 13, color: '#3B6D11', lineHeight: 1.7 }}>
-                <div style={{ marginBottom: 6 }}>✅ Los resultados son <strong>orientativos</strong>, no diagnósticos médicos.</div>
-                <div style={{ marginBottom: 6 }}>✅ Nunca sustituyen la consulta con un profesional de la salud.</div>
-                <div style={{ marginBottom: 6 }}>✅ Los profesionales afiliados (como Rocío Fábregas) actúan de forma independiente.</div>
+                <div style={{ marginBottom: 4 }}>✅ Los resultados son <strong>orientativos</strong>, no diagnósticos médicos.</div>
+                <div style={{ marginBottom: 4 }}>✅ Nunca sustituyen la consulta con un profesional de la salud.</div>
+                <div style={{ marginBottom: 4 }}>✅ Los profesionales afiliados actúan de forma independiente.</div>
                 <div>✅ Tus datos se tratan conforme al RGPD y no se ceden a terceros.</div>
               </div>
             </div>
-
-            {/* Texto legal completo scrollable */}
-            <div style={{
-              flex: 1, overflowY: 'auto',
-              padding: '20px 24px',
-              fontSize: 11, color: '#6B6860', lineHeight: 1.8,
-              whiteSpace: 'pre-wrap',
-            }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', fontSize: 11, color: '#6B6860', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
               {TC_TEXTO}
             </div>
-
-            {/* Checkbox + botones */}
-            <div style={{ padding: '16px 24px', borderTop: '1px solid #E0DBD0' }}>
-              <label style={{
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                fontSize: 13, color: '#1E1E1A', cursor: 'pointer',
-                marginBottom: 16,
-              }}>
+            <div style={{ padding: '14px 24px', borderTop: '1px solid #E0DBD0' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#1E1E1A', cursor: 'pointer', marginBottom: 14 }}>
                 <input
                   type="checkbox"
                   checked={tcAceptado}
                   onChange={e => setTcAceptado(e.target.checked)}
                   style={{ marginTop: 2, accentColor: '#5B9B3C', width: 16, height: 16, flexShrink: 0 }}
                 />
-                He leído y acepto los Términos y Condiciones y la Política de Privacidad de mymetaboliq.com
+                He leído y acepto los Términos y Condiciones y la Política de Privacidad
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => setMostrarTC(false)}
-                  style={{
-                    flex: 1, background: '#F7F4EE', color: '#6B6860',
-                    border: '1px solid #E0DBD0', padding: '12px',
-                    borderRadius: 100, fontSize: 13, cursor: 'pointer',
-                    fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-                  }}
-                >
+                <button onClick={() => setMostrarTC(false)} style={{ flex: 1, background: '#F7F4EE', color: '#6B6860', border: '1px solid #E0DBD0', padding: '12px', borderRadius: 100, fontSize: 13, cursor: 'pointer', fontFamily: 'Trebuchet MS, Verdana, sans-serif' }}>
                   Cancelar
                 </button>
-                <button
-                  onClick={aceptarTCyEnviar}
-                  disabled={!tcAceptado}
-                  style={{
-                    flex: 2,
-                    background: tcAceptado ? '#5B9B3C' : '#C8E8B0',
-                    color: '#fff', border: 'none', padding: '12px',
-                    borderRadius: 100, fontSize: 13, fontWeight: 700,
-                    cursor: tcAceptado ? 'pointer' : 'not-allowed',
-                    fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-                    transition: 'background 0.2s',
-                  }}
-                >
+                <button onClick={aceptarTCyEnviar} disabled={!tcAceptado} style={{ flex: 2, background: tcAceptado ? '#5B9B3C' : '#C8E8B0', color: '#fff', border: 'none', padding: '12px', borderRadius: 100, fontSize: 13, fontWeight: 700, cursor: tcAceptado ? 'pointer' : 'not-allowed', fontFamily: 'Trebuchet MS, Verdana, sans-serif', transition: 'background 0.2s' }}>
                   Acepto y ver mi resultado →
                 </button>
               </div>
@@ -597,93 +658,95 @@ export default function ChatBot() {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{
-        background: '#E8621A', padding: '14px 20px',
-        display: 'flex', alignItems: 'center', gap: '10px'
-      }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '50%',
-          background: '#fff', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: '16px'
-        }}>🧬</div>
-        <div>
+      {/* ── HEADER ─────────────────────────────────────────────── */}
+      <div style={{ background: '#E8621A', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0 }}>🧬</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff' }}>Test Metabólico</div>
           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)' }}>● En línea</div>
         </div>
-        <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
-          {Math.round((preguntaActual / preguntas.length) * 100)}% completado
-        </div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }}>{progreso}% completado</div>
       </div>
 
-      {/* Barra progreso */}
-      <div style={{ height: '4px', background: '#EDE9E0' }}>
-        <div style={{
-          height: '100%', background: '#5B9B3C',
-          width: `${Math.round((preguntaActual / preguntas.length) * 100)}%`,
-          transition: 'width 0.4s ease'
-        }} />
+      {/* ── BARRA DE PROGRESO ──────────────────────────────────── */}
+      <div style={{ height: '4px', background: '#EDE9E0', flexShrink: 0 }}>
+        <div style={{ height: '100%', background: '#5B9B3C', width: `${progreso}%`, transition: 'width 0.4s ease' }} />
       </div>
 
-      {/* Mensajes */}
+      {/* ── MENSAJES — zona scrollable ─────────────────────────── */}
+      {/* El wrapper exterior ocupa todo el ancho y es el que scrollea.  */}
+      {/* El inner centra el contenido a maxWidth sin romper el scroll.  */}
+      <div ref={scrollContainerRef} style={{
+        flex: 1,
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
       <div style={{
-        flex: 1, overflowY: 'auto', padding: '20px 16px',
-        display: 'flex', flexDirection: 'column', gap: '12px',
-        maxWidth: '640px', width: '100%', margin: '0 auto'
+        flex: 1,
+        padding: '16px 12px 8px',
+        display: 'flex', flexDirection: 'column', gap: '10px',
+        maxWidth: '640px', width: '100%',
+        margin: '0 auto',
       }}>
         {mensajes.map((msg) => (
-          <div key={msg.id} style={{
-            display: 'flex',
-            justifyContent: msg.tipo === 'usuario' ? 'flex-end' : 'flex-start'
-          }}>
+          <div key={msg.id} style={{ display: 'flex', justifyContent: msg.tipo === 'usuario' ? 'flex-end' : 'flex-start' }}>
             <div style={{
-              maxWidth: '80%', padding: '12px 16px',
+              maxWidth: '82%',
+              padding: '11px 15px',
               borderRadius: msg.tipo === 'usuario' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
               background: msg.tipo === 'usuario' ? '#E8621A' : '#fff',
               color: msg.tipo === 'usuario' ? '#fff' : '#1E1E1A',
               fontSize: '14px', lineHeight: '1.6',
-              boxShadow: '0 2px 8px rgba(30,30,26,0.08)',
-              border: msg.tipo === 'bot' ? '1px solid #E0DBD0' : 'none'
+              boxShadow: '0 2px 8px rgba(30,30,26,0.07)',
+              border: msg.tipo === 'bot' ? '1px solid #E0DBD0' : 'none',
+              wordBreak: 'break-word',
             }}>
               {msg.texto}
             </div>
           </div>
         ))}
 
+        {/* Animación de carga */}
         {cargando && (
           <div style={{ display: 'flex', gap: '4px', padding: '12px 16px', background: '#fff', borderRadius: '16px 16px 16px 4px', width: 'fit-content', border: '1px solid #E0DBD0' }}>
             {[0, 1, 2].map(i => (
-              <div key={i} style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                background: '#5B9B3C', opacity: 0.6,
-                animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`
-              }} />
+              <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#5B9B3C', opacity: 0.6, animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
             ))}
           </div>
         )}
-      </div>
 
-      {/* Input area */}
+        {/* Ancla invisible — el scroll siempre llega aquí */}
+        <div ref={mensajesEndRef} style={{ height: 1, flexShrink: 0 }} />
+      </div>{/* cierra inner */}
+      </div>{/* cierra outer scrollable */}
+
+      {/* ── INPUT — fijo en la parte inferior ──────────────────── */}
       {!terminado && !cargando && (
         <div style={{
-          padding: '16px', background: '#fff',
+          padding: '12px 12px env(safe-area-inset-bottom, 12px)',
+          background: '#fff',
           borderTop: '1px solid #E0DBD0',
-          maxWidth: '640px', width: '100%', margin: '0 auto'
+          maxWidth: '640px', width: '100%',
+          margin: '0 auto',
+          flexShrink: 0,
         }}>
 
+          {/* Opciones */}
           {pregunta?.tipo === 'opciones' && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
               {pregunta.opciones.map(op => (
                 <button key={op} onClick={() => procesarRespuesta(op)} style={{
                   background: '#F7F4EE', border: '1.5px solid #5B9B3C',
-                  color: '#5B9B3C', padding: '10px 18px',
+                  color: '#5B9B3C', padding: '9px 15px',
                   borderRadius: '100px', fontSize: '13px',
                   fontWeight: '500', cursor: 'pointer',
                   fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-                  transition: 'all 0.2s'
+                  lineHeight: '1.35', transition: 'all 0.15s',
                 }}
-                  onMouseEnter={e => { e.target.style.background = '#5B9B3C'; e.target.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.target.style.background = '#F7F4EE'; e.target.style.color = '#5B9B3C'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#5B9B3C'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#F7F4EE'; e.currentTarget.style.color = '#5B9B3C'; }}
                 >
                   {op}
                 </button>
@@ -691,18 +754,20 @@ export default function ChatBot() {
             </div>
           )}
 
+          {/* Escala 1-10 */}
           {pregunta?.tipo === 'escala' && (
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center' }}>
               {escalaOpciones.map(n => (
                 <button key={n} onClick={() => procesarRespuesta(String(n))} style={{
-                  width: '40px', height: '40px',
+                  width: '38px', height: '38px',
                   background: '#F7F4EE', border: '1.5px solid #E0DBD0',
                   color: '#1E1E1A', borderRadius: '10px',
                   fontSize: '13px', fontWeight: '600',
-                  cursor: 'pointer', fontFamily: 'Trebuchet MS, Verdana, sans-serif'
+                  cursor: 'pointer', fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                  flexShrink: 0,
                 }}
-                  onMouseEnter={e => { e.target.style.background = '#E8621A'; e.target.style.color = '#fff'; e.target.style.borderColor = '#E8621A'; }}
-                  onMouseLeave={e => { e.target.style.background = '#F7F4EE'; e.target.style.color = '#1E1E1A'; e.target.style.borderColor = '#E0DBD0'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#E8621A'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#E8621A'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#F7F4EE'; e.currentTarget.style.color = '#1E1E1A'; e.currentTarget.style.borderColor = '#E0DBD0'; }}
                 >
                   {n}
                 </button>
@@ -710,6 +775,52 @@ export default function ChatBot() {
             </div>
           )}
 
+          {/* Número opcional — input + botón de escape */}
+          {pregunta?.tipo === 'numero_opcional' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="number"
+                  value={inputValor}
+                  onChange={e => setInputValor(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && inputValor.trim() && procesarRespuesta(inputValor.trim())}
+                  placeholder={pregunta.placeholder}
+                  inputMode="decimal"
+                  style={{
+                    flex: 1, padding: '12px 16px',
+                    border: '1.5px solid #E0DBD0', borderRadius: '100px',
+                    fontSize: '16px',
+                    fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                    background: '#F7F4EE', color: '#1E1E1A', outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={() => inputValor.trim() && procesarRespuesta(inputValor.trim())}
+                  style={{
+                    background: '#E8621A', color: '#fff',
+                    border: 'none', padding: '12px 18px',
+                    borderRadius: '100px', fontSize: '16px',
+                    cursor: 'pointer', fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                    flexShrink: 0,
+                  }}
+                >→</button>
+              </div>
+              <button
+                onClick={() => procesarRespuesta('', pregunta.campo)}
+                style={{
+                  background: 'transparent', color: '#9A9790',
+                  border: '1px solid #E0DBD0', padding: '8px 16px',
+                  borderRadius: '100px', fontSize: '12px',
+                  cursor: 'pointer', fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                No lo sé / No tengo este dato
+              </button>
+            </div>
+          )}
+
+          {/* Texto / número / email */}
           {(pregunta?.tipo === 'texto' || pregunta?.tipo === 'numero' || pregunta?.tipo === 'email') && (
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
@@ -718,22 +829,23 @@ export default function ChatBot() {
                 onChange={e => setInputValor(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && inputValor.trim() && procesarRespuesta(inputValor.trim())}
                 placeholder={pregunta.placeholder}
+                autoComplete={pregunta.tipo === 'email' ? 'email' : 'off'}
+                inputMode={pregunta.tipo === 'numero' ? 'decimal' : undefined}
                 style={{
                   flex: 1, padding: '12px 16px',
                   border: '1.5px solid #E0DBD0', borderRadius: '100px',
-                  fontSize: '14px', fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-                  background: '#F7F4EE', color: '#1E1E1A', outline: 'none'
+                  fontSize: '16px', // 16px evita el zoom automático en iOS
+                  fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                  background: '#F7F4EE', color: '#1E1E1A', outline: 'none',
                 }}
               />
-              <button
-                onClick={() => inputValor.trim() && procesarRespuesta(inputValor.trim())}
-                style={{
-                  background: '#E8621A', color: '#fff',
-                  border: 'none', padding: '12px 20px',
-                  borderRadius: '100px', fontSize: '14px',
-                  cursor: 'pointer', fontFamily: 'Trebuchet MS, Verdana, sans-serif'
-                }}
-              >→</button>
+              <button onClick={() => inputValor.trim() && procesarRespuesta(inputValor.trim())} style={{
+                background: '#E8621A', color: '#fff',
+                border: 'none', padding: '12px 18px',
+                borderRadius: '100px', fontSize: '16px',
+                cursor: 'pointer', fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+                flexShrink: 0,
+              }}>→</button>
             </div>
           )}
         </div>
@@ -742,7 +854,7 @@ export default function ChatBot() {
       <style>{`
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); }
-          40% { transform: translateY(-6px); }
+          40%           { transform: translateY(-6px); }
         }
       `}</style>
     </div>
