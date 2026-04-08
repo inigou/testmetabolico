@@ -342,7 +342,7 @@ export default function Dashboard() {
                 <div style={{ background: 'rgba(0,0,0,0.12)', borderRadius: 12, padding: '14px 20px', textAlign: 'center', flex: 1 }}>
                   <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Edad real</div>
                   <div style={{ fontFamily: 'Georgia, serif', fontSize: 48, color: 'rgba(255,255,255,0.4)', lineHeight: 1 }}>
-                    {Math.round(ultimo.edad_metabolica + Math.abs(ultimo.delta_anos || 0))}
+                    {Math.round(ultimo.edad_metabolica - (ultimo.delta_anos || 0))}
                   </div>
                 </div>
                 <div style={{ fontSize: 20, color: 'rgba(255,255,255,0.35)', marginBottom: 14 }}>→</div>
