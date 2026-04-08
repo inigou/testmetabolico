@@ -219,8 +219,61 @@ export default function Dashboard() {
 
   const descargarPDF = () => {
     const objetivo = objetivos.find(o => o.id === objetivoActivo);
-    const contenido = `PLAN SEMANAL — ${objetivo?.nombre?.toUpperCase()}\nGenerado: ${new Date().toLocaleDateString('es-ES')}\nICM: ${ultimo?.icm_total}/100 | Edad metabólica: ${ultimo?.edad_metabolica} años\n\nmymetaboliq.com`;
-    const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
+    const lineas = [];
+
+    lineas.push(`PLAN SEMANAL — ${objetivo?.nombre?.toUpperCase()}`);
+    lineas.push(`Generado: ${new Date().toLocaleDateString('es-ES')}`);
+    lineas.push(`ICM: ${ultimo?.icm_total}/100 | Edad metabólica: ${ultimo?.edad_metabolica} años`);
+    lineas.push(`mymetaboliq.com`);
+    lineas.push('');
+    lineas.push('═══════════════════════════════════');
+    lineas.push('DIETA SEMANAL');
+    lineas.push('═══════════════════════════════════');
+
+    planGenerado?.dieta?.forEach(d => {
+      lineas.push('');
+      lineas.push(`${d.dia.toUpperCase()}`);
+      lineas.push(`Desayuno: ${d.desayuno}`);
+      lineas.push(`Comida: ${d.comida}`);
+      lineas.push(`Cena: ${d.cena}`);
+      lineas.push(`Snack: ${d.snack}`);
+    });
+
+    lineas.push('');
+    lineas.push('═══════════════════════════════════');
+    lineas.push('EJERCICIOS');
+    lineas.push('═══════════════════════════════════');
+
+    planGenerado?.ejercicios?.forEach(d => {
+      lineas.push('');
+      lineas.push(`${d.dia.toUpperCase()} — ${d.tipo}`);
+      d.ejercicios?.forEach(e => lineas.push(`  • ${e}`));
+    });
+
+    lineas.push('');
+    lineas.push('═══════════════════════════════════');
+    lineas.push('LISTA DE LA COMPRA');
+    lineas.push('═══════════════════════════════════');
+
+    Object.entries(planGenerado?.compra || {}).forEach(([seccion, items]) => {
+      lineas.push('');
+      lineas.push(seccion.toUpperCase());
+      items?.forEach(item => lineas.push(`  ☐ ${item}`));
+    });
+
+    lineas.push('');
+    lineas.push('═══════════════════════════════════');
+    lineas.push('SUPLEMENTOS');
+    lineas.push('═══════════════════════════════════');
+
+    planGenerado?.suplementos?.forEach(s => {
+      lineas.push('');
+      lineas.push(`${s.nombre} — ${s.prioridad}`);
+      lineas.push(`Dosis: ${s.dosis}`);
+      lineas.push(`${s.motivo}`);
+    });
+
+    const blob = new Blob([lineas.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
