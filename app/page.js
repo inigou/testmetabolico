@@ -611,8 +611,14 @@ export default function LandingPage() {
           <div>© 2025 mymetaboliq.com · Todos los derechos reservados</div>
           <div style={{ marginTop: 4 }}>El test ICM es orientativo y no sustituye el diagnóstico médico profesional.</div>
           <div style={{ marginTop: 10, display: "flex", gap: 20, justifyContent: "center" }}>
-            {["Política de privacidad", "Cookies", "Contacto"].map((t, i) => (
-              <a key={i} href="#" style={{ color: C.mid, fontSize: 12, textDecoration: "none" }}>{t}</a>
+            {[
+              ["Política de privacidad", "/privacidad"],
+              ["Cookies", "/cookies"],
+              ["Términos y condiciones", "/terminos"],
+              ["Aviso legal", "/aviso-legal"],
+              ["Contacto", "mailto:tutestmetabolico@gmail.com"],
+            ].map(([t, h]) => (
+              <a key={t} href={h} style={{ color: C.mid, fontSize: 12, textDecoration: "none" }}>{t}</a>
             ))}
           </div>
         </div>
