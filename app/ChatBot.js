@@ -331,6 +331,13 @@ const preguntas = [
     tipo: 'escala',
     campo: 'V_vitalidad',
   },
+  {
+    id: 'objetivo',
+    mensaje: '¿Cuál es tu objetivo principal ahora mismo?',
+    tipo: 'opciones',
+    campo: 'N_objetivo',
+    opciones: ['Perder grasa', 'Ganar músculo', 'Más energía', 'Mejorar descanso', 'Rendimiento deportivo', 'Envejecer mejor'],
+  },
 
   // ── FINAL ────────────────────────────────────────────────────────
   {
