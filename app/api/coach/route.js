@@ -6,7 +6,8 @@ const client = new Anthropic({
 
 export async function POST(request) {
   try {
-    const { pregunta, perfil, tipo } = await request.json();
+    const body = await request.json();
+    const { pregunta, perfil, tipo } = body;
 
     if (tipo === 'plan') {
       const message = await client.messages.create({
@@ -54,6 +55,14 @@ Responde SOLO JSON valido sin markdown ni backticks.`
       }
     }
 
+    // Construir historial de conversación
+    const historialMensajes = (body.historial || [])
+      .filter(m => m.texto && !m.cargando)
+      .map(m => ({
+        role: m.rol === 'usuario' ? 'user' : 'assistant',
+        content: m.texto,
+      }));
+
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
@@ -76,17 +85,28 @@ REGLAS CRITICAS:
 - Cuando pregunten por modas, analiza desde la fisiologia y el contexto individual.
 - Enfocate en marcadores metabolicos: sensibilidad a la insulina, inflamacion sistemica, perfil lipidico.
 - NUNCA hagas preguntas de seguimiento al usuario. Da siempre la mejor respuesta posible con los datos disponibles.`,
-      messages: [{
-        role: "user",
-        content: `Perfil del usuario:
+      messages: [
+        {
+          role: "user",
+          content: `Perfil del usuario:
 - ICM: ${perfil.icm}/100 (${perfil.categoria})
 - Edad metabolica: ${perfil.edad_metabolica} anos
 - Bloque mas fuerte: ${perfil.mejor_bloque}
 - Bloque a mejorar: ${perfil.peor_bloque}
 - Scores: ECO ${perfil.eco} EFH ${perfil.efh} NUT ${perfil.nut} DES ${perfil.des} VIT ${perfil.vit}
 
-Pregunta: ${pregunta}`
-      }]
+Ten en cuenta este perfil en toda la conversacion.`,
+        },
+        {
+          role: "assistant",
+          content: "Entendido, tengo tu perfil metabolico. Puedes preguntarme lo que necesites.",
+        },
+        ...historialMensajes,
+        {
+          role: "user",
+          content: pregunta,
+        },
+      ],
     });
 
     return Response.json({ respuesta: message.content[0].text });
