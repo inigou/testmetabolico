@@ -1,4 +1,5 @@
 'use client';
+import PlanMetabolico from './Planmetabolico';
 import { useState } from 'react';
 
 const C = {
@@ -571,20 +572,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* CTA primer test */}
-            {datos.length === 1 && (
-              <div style={{ background: C.greenPale, border: `1px solid #C8E8B0`, borderRadius: 14, padding: 20, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, marginBottom: 8 }}>📅</div>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark, marginBottom: 6 }}>Vuelve en 30 días</div>
-                <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.6, marginBottom: 16 }}>
-                  Cuando hagas tu segundo test verás aquí tu evolución y el gráfico de progreso del ICM.
-                </div>
-                <a href="/bot" style={{ display: 'inline-block', background: C.green, color: C.white, padding: '10px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                  Hacer nuevo test →
-                </a>
-              </div>
-            )}
-
             {/* CTA suscripción */}
             <div style={{ background: C.orange, borderRadius: 14, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <div>
@@ -595,6 +582,10 @@ export default function Dashboard() {
                 Activar suscripción →
               </a>
             </div>
+
+
+            {/* PLAN METABÓLICO */}
+            <PlanMetabolico ultimo={ultimo} nombre={ultimo?.nombre} />
 
             {/* COACH */}
             <div style={{ background: C.green, borderRadius: 16, padding: '20px 24px' }}>
@@ -667,173 +658,17 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Plan semanal header */}
-            <div style={{ background: C.green, borderRadius: 14, padding: '18px 20px' }}>
-              <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: C.white, marginBottom: 4 }}>📋 Plan semanal personalizado</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Dieta, ejercicios, lista de compra y suplementos según tu objetivo</div>
-            </div>
-
-            {/* Selector objetivo */}
-            {!objetivoActivo && !planGenerado && (
-              <div style={{ background: C.white, borderRadius: 14, padding: 20, border: `1px solid ${C.light}` }}>
-                <div style={{ fontSize: 11, color: '#9A9790', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>¿En qué quieres enfocarte?</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {objetivos.map(obj => (
-                    <button key={obj.id} onClick={() => setObjetivoActivo(obj.id)} style={{
-                      background: C.bg, border: `1.5px solid ${C.light}`,
-                      borderRadius: 10, padding: 12, textAlign: 'left',
-                      cursor: 'pointer', fontFamily: font, transition: 'all 0.2s',
-                    }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.green; e.currentTarget.style.background = C.greenPale; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.light; e.currentTarget.style.background = C.bg; }}
-                    >
-                      <div style={{ fontSize: 18, marginBottom: 4 }}>{obj.emoji}</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.dark }}>{obj.nombre}</div>
-                      <div style={{ fontSize: 10, color: '#9A9790', marginTop: 2 }}>{obj.descripcion}</div>
-                    </button>
-                  ))}
+            {/* CTA primer test */}
+            {datos.length === 1 && (
+              <div style={{ background: C.greenPale, border: `1px solid #C8E8B0`, borderRadius: 14, padding: 20, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>📅</div>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark, marginBottom: 6 }}>Vuelve en 30 días</div>
+                <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.6, marginBottom: 16 }}>
+                  Cuando hagas tu segundo test verás aquí tu evolución y el gráfico de progreso del ICM.
                 </div>
-              </div>
-            )}
-
-            {/* Botón generar */}
-            {objetivoActivo && !planGenerado && !generando && (
-              <div style={{ background: C.white, borderRadius: 14, padding: 20, border: `1px solid ${C.light}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  <div style={{ fontSize: 32 }}>{objetivos.find(o => o.id === objetivoActivo)?.emoji}</div>
-                  <div>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark }}>{objetivos.find(o => o.id === objetivoActivo)?.nombre}</div>
-                    <div style={{ fontSize: 11, color: '#9A9790', marginTop: 2 }}>Plan semanal para tu ICM de {ultimo?.icm_total}/100</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={generarPlan} style={{ flex: 1, background: C.green, color: C.white, border: 'none', padding: 12, borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>
-                    Generar mi plan semanal →
-                  </button>
-                  <button onClick={() => setObjetivoActivo(null)} style={{ background: C.bg, color: C.mid, border: `1px solid ${C.light}`, padding: '12px 16px', borderRadius: 100, fontSize: 12, cursor: 'pointer', fontFamily: font }}>
-                    ← Volver
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Loading plan */}
-            {generando && (
-              <div style={{ background: C.white, borderRadius: 14, padding: 32, border: `1px solid ${C.light}`, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark, marginBottom: 6 }}>Generando tu plan personalizado...</div>
-                <div style={{ fontSize: 12, color: '#9A9790' }}>Analizando tu perfil metabólico</div>
-              </div>
-            )}
-
-            {/* Plan generado */}
-            {planGenerado && (
-              <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
-                <div style={{ background: C.green, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>
-                      {objetivos.find(o => o.id === objetivoActivo)?.emoji} Plan {objetivos.find(o => o.id === objetivoActivo)?.nombre}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Semana del {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</div>
-                  </div>
-                  <button onClick={() => { setPlanGenerado(null); setObjetivoActivo(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, padding: '6px 12px', borderRadius: 100, fontSize: 11, cursor: 'pointer' }}>
-                    Nuevo plan
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', borderBottom: `1px solid ${C.light}`, background: C.bg }}>
-                  {['dieta', 'ejercicios', 'compra', 'suplementos'].map(tab => (
-                    <button key={tab} onClick={() => setTabActivo(tab)} style={{
-                      flex: 1, padding: '10px 4px',
-                      background: tabActivo === tab ? C.white : 'transparent',
-                      border: 'none', borderBottom: tabActivo === tab ? `2px solid ${C.orange}` : `2px solid transparent`,
-                      fontSize: 10, fontWeight: 600,
-                      color: tabActivo === tab ? C.orange : '#9A9790',
-                      cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: font,
-                    }}>
-                      {tab === 'dieta' ? '🥗 Dieta' : tab === 'ejercicios' ? '🏋️ Ejercicios' : tab === 'compra' ? '🛒 Compra' : '💊 Suplementos'}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ padding: '16px 20px' }}>
-
-                  {tabActivo === 'dieta' && (
-                    <>
-                      {planGenerado.directrices && planGenerado.directrices.length > 0 && (
-                        <div style={{ background: C.greenPale, border: '1px solid #C8E8B0', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#3B6D11', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            📋 Directrices generales
-                          </div>
-                          {planGenerado.directrices.map((d, i) => (
-                            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
-                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, marginTop: 5 }} />
-                              <span style={{ fontSize: 12, color: C.dark, lineHeight: 1.5 }}>{d}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {planGenerado.dieta.map((dia, i) => (
-                        <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < planGenerado.dieta.length - 1 ? `1px solid ${C.light}` : 'none' }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.orange, marginBottom: 6 }}>{dia.dia}</div>
-                          {['desayuno', 'comida', 'cena', 'snack'].map(comida => (
-                            <div key={comida} style={{ display: 'flex', gap: 8, marginBottom: 3 }}>
-                              <span style={{ fontSize: 10, color: '#9A9790', minWidth: 60, textTransform: 'capitalize' }}>{comida}:</span>
-                              <span style={{ fontSize: 11, color: C.dark }}>{dia[comida]}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </>
-                  )}
-
-                  {tabActivo === 'ejercicios' && planGenerado.ejercicios.map((dia, i) => (
-                    <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < planGenerado.ejercicios.length - 1 ? `1px solid ${C.light}` : 'none' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: C.orange }}>{dia.dia}</span>
-                        <span style={{ fontSize: 10, color: '#9A9790' }}>{dia.tipo}</span>
-                      </div>
-                      {dia.ejercicios.map((ej, j) => (
-                        <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.green, flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, color: C.dark }}>{ej}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-
-                  {tabActivo === 'compra' && Object.entries(planGenerado.compra).map(([seccion, items]) => (
-                    <div key={seccion} style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.green, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>{seccion}</div>
-                      {items.map((item, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          <div style={{ width: 14, height: 14, border: `1.5px solid #C8E8B0`, borderRadius: 3, flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, color: C.dark }}>{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-
-                  {tabActivo === 'suplementos' && planGenerado.suplementos.map((sup, i) => (
-                    <div key={i} style={{ background: C.bg, borderRadius: 10, padding: 12, marginBottom: 8, border: `1px solid ${C.light}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>💊 {sup.nombre}</div>
-                        <div style={{ fontSize: 10, background: C.greenPale, color: C.green, padding: '2px 8px', borderRadius: 100, border: '1px solid #C8E8B0' }}>{sup.prioridad}</div>
-                      </div>
-                      <div style={{ fontSize: 11, color: C.mid, marginBottom: 2 }}>{sup.dosis}</div>
-                      <div style={{ fontSize: 11, color: '#9A9790' }}>{sup.motivo}</div>
-                    </div>
-                  ))}
-
-                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.light}`, display: 'flex', gap: 8 }}>
-                    <button onClick={descargarPDF} style={{ flex: 1, background: C.orange, color: C.white, border: 'none', padding: 11, borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>
-                      📄 Descargar plan completo
-                    </button>
-                    <button onClick={() => { setPlanGenerado(null); setObjetivoActivo(null); }} style={{ background: C.bg, color: C.mid, border: `1px solid ${C.light}`, padding: '11px 16px', borderRadius: 100, fontSize: 12, cursor: 'pointer', fontFamily: font }}>
-                      Nuevo plan
-                    </button>
-                  </div>
-                </div>
+                <a href="/bot" style={{ display: 'inline-block', background: C.green, color: C.white, padding: '10px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                  Hacer nuevo test →
+                </a>
               </div>
             )}
 
