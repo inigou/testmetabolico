@@ -1,6 +1,7 @@
 'use client';
+import { useState, useEffect } from 'react';
 import PlanMetabolico from './Planmetabolico';
-import { useState } from 'react';
+import ConfiguracionMetabolica from './ConfiguracionMetabolica';
 
 const C = {
   bg: '#F7F4EE',
@@ -17,26 +18,15 @@ const C = {
 
 const font = 'Trebuchet MS, Verdana, sans-serif';
 
-const objetivos = [
-  { id: 'hipertrofia', emoji: '💪', nombre: 'Hipertrofia', descripcion: 'Ganar músculo y fuerza' },
-  { id: 'definicion', emoji: '🔥', nombre: 'Definición', descripcion: 'Perder grasa, mantener músculo' },
-  { id: 'perdida_peso', emoji: '⚖️', nombre: 'Pérdida de peso', descripcion: 'Reducir peso saludable' },
-  { id: 'descanso', emoji: '😴', nombre: 'Mejorar descanso', descripcion: 'Optimizar sueño y recuperación' },
-  { id: 'estres', emoji: '🧘', nombre: 'Reducir estrés', descripcion: 'Equilibrio mental y físico' },
-  { id: 'energia', emoji: '⚡', nombre: 'Más energía', descripcion: 'Vitalidad y rendimiento diario' },
-  { id: 'rendimiento', emoji: '🏃', nombre: 'Rendimiento', descripcion: 'Mejorar marca y resistencia' },
-  { id: 'slow_aging', emoji: '🌿', nombre: 'Slow aging', descripcion: 'Envejecer mejor desde dentro' },
-];
-
 const preguntasSugeridas = [
-  { emoji: '🥩', texto: '¿Cuánta proteína necesito al día?' },
-  { emoji: '⚖️', texto: '¿Cómo divido mis macros para definir?' },
-  { emoji: '⏰', texto: '¿Qué debo comer antes de entrenar?' },
-  { emoji: '🌙', texto: '¿Cómo mejorar la calidad del sueño?' },
-  { emoji: '💊', texto: '¿Qué suplementos son realmente útiles?' },
-  { emoji: '🔥', texto: '¿Cuánto cardio para perder grasa?' },
-  { emoji: '🧠', texto: '¿Cómo reducir el cortisol?' },
-  { emoji: '💧', texto: '¿Cuánta agua debo beber al día?' },
+  { emoji: '🥩', texto: 'Cuanta proteina necesito al dia?' },
+  { emoji: '⚖️', texto: 'Como divido mis macros para definir?' },
+  { emoji: '⏰', texto: 'Que debo comer antes de entrenar?' },
+  { emoji: '🌙', texto: 'Como mejorar la calidad del sueno?' },
+  { emoji: '💊', texto: 'Que suplementos son realmente utiles?' },
+  { emoji: '🔥', texto: 'Cuanto cardio para perder grasa?' },
+  { emoji: '🧠', texto: 'Como reducir el cortisol?' },
+  { emoji: '💧', texto: 'Cuanta agua debo beber al dia?' },
 ];
 
 export default function Dashboard() {
@@ -44,16 +34,23 @@ export default function Dashboard() {
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
-  const [objetivoActivo, setObjetivoActivo] = useState(null);
-  const [planGenerado, setPlanGenerado] = useState(null);
-  const [generando, setGenerando] = useState(false);
-  const [tabActivo, setTabActivo] = useState('dieta');
   const [consultaLibre, setConsultaLibre] = useState('');
   const [historialConsultas, setHistorialConsultas] = useState([]);
+  const [mostrarConfig, setMostrarConfig] = useState(false);
+  const [objetivoId, setObjetivoId] = useState('mantener');
 
   const ultimo = datos?.[datos.length - 1];
   const anterior = datos?.[datos.length - 2];
   const deltaICM = anterior ? (ultimo?.icm_total - anterior?.icm_total).toFixed(1) : null;
+
+  // Cargar objetivo guardado cuando se cargan los datos
+  useEffect(() => {
+    if (!datos || !email) return;
+    try {
+      const cfg = JSON.parse(localStorage.getItem(`config_${email}`) || '{}');
+      if (cfg.objetivoId) setObjetivoId(cfg.objetivoId);
+    } catch (e) { console.error(e); }
+  }, [datos, email]);
 
   const categoriaColor = (icm) => {
     if (icm >= 80) return C.green;
@@ -104,12 +101,12 @@ export default function Dashboard() {
       );
       const tests = await res.json();
       if (tests.length === 0) {
-        setError('No encontramos ningún test con ese email. ¿Has hecho el test antes?');
+        setError('No encontramos ningun test con ese email. Has hecho el test antes?');
       } else {
         setDatos(tests);
       }
     } catch {
-      setError('Error al conectar. Inténtalo de nuevo.');
+      setError('Error al conectar. Intentalo de nuevo.');
     } finally {
       setCargando(false);
     }
@@ -129,9 +126,9 @@ export default function Dashboard() {
     setHistorialConsultas(prev => [tempConsulta, ...prev]);
 
     const scores = [
-      { nombre: 'Actividad física', valor: ultimo?.efh_score },
-      { nombre: 'Composición corporal', valor: ultimo?.eco_score },
-      { nombre: 'Nutrición', valor: ultimo?.nut_score },
+      { nombre: 'Actividad fisica', valor: ultimo?.efh_score },
+      { nombre: 'Composicion corporal', valor: ultimo?.eco_score },
+      { nombre: 'Nutricion', valor: ultimo?.nut_score },
       { nombre: 'Descanso', valor: ultimo?.des_score },
       { nombre: 'Vitalidad', valor: ultimo?.vit_score },
     ];
@@ -146,7 +143,7 @@ export default function Dashboard() {
           pregunta: q,
           perfil: {
             icm: ultimo?.icm_total,
-            categoria: ultimo?.icm_total >= 80 ? 'Metabolismo óptimo' : ultimo?.icm_total >= 65 ? 'Metabolismo activo' : ultimo?.icm_total >= 50 ? 'Metabolismo moderado' : 'Metabolismo lento',
+            categoria: ultimo?.icm_total >= 80 ? 'Metabolismo optimo' : ultimo?.icm_total >= 65 ? 'Metabolismo activo' : ultimo?.icm_total >= 50 ? 'Metabolismo moderado' : 'Metabolismo lento',
             edad_metabolica: ultimo?.edad_metabolica,
             mejor_bloque: mejor.nombre,
             peor_bloque: peor.nombre,
@@ -164,135 +161,34 @@ export default function Dashboard() {
       );
     } catch {
       setHistorialConsultas(prev =>
-        prev.map((c, i) => i === 0 ? { ...c, respuesta: 'Error al conectar. Inténtalo de nuevo.', cargando: false } : c)
+        prev.map((c, i) => i === 0 ? { ...c, respuesta: 'Error al conectar. Intentalo de nuevo.', cargando: false } : c)
       );
     }
-  };
-
-  const generarPlan = async () => {
-    setGenerando(true);
-
-    const scores = [
-      { nombre: 'Actividad física', valor: ultimo?.efh_score },
-      { nombre: 'Composición corporal', valor: ultimo?.eco_score },
-      { nombre: 'Nutrición', valor: ultimo?.nut_score },
-      { nombre: 'Descanso', valor: ultimo?.des_score },
-      { nombre: 'Vitalidad', valor: ultimo?.vit_score },
-    ];
-    const mejor = scores.reduce((a, b) => a.valor > b.valor ? a : b);
-    const peor = scores.reduce((a, b) => a.valor < b.valor ? a : b);
-
-    try {
-      const res = await fetch('/api/coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'plan',
-          perfil: {
-            objetivo: objetivos.find(o => o.id === objetivoActivo)?.nombre,
-            icm: ultimo?.icm_total,
-            categoria: ultimo?.icm_total >= 80 ? 'Metabolismo óptimo' : ultimo?.icm_total >= 65 ? 'Metabolismo activo' : ultimo?.icm_total >= 50 ? 'Metabolismo moderado' : 'Metabolismo lento',
-            edad_metabolica: ultimo?.edad_metabolica,
-            mejor_bloque: mejor.nombre,
-            peor_bloque: peor.nombre,
-            eco: ultimo?.eco_score,
-            efh: ultimo?.efh_score,
-            nut: ultimo?.nut_score,
-            des: ultimo?.des_score,
-            vit: ultimo?.vit_score,
-          }
-        }),
-      });
-      const data = await res.json();
-      if (data.plan) {
-        setPlanGenerado(data.plan);
-        setTabActivo('dieta');
-      } else {
-        throw new Error('Sin plan');
-      }
-    } catch {
-      setPlanGenerado(null);
-      setObjetivoActivo(null);
-    } finally {
-      setGenerando(false);
-    }
-  };
-
-  const descargarPDF = () => {
-    const objetivo = objetivos.find(o => o.id === objetivoActivo);
-    const lineas = [];
-
-    lineas.push(`PLAN SEMANAL — ${objetivo?.nombre?.toUpperCase()}`);
-    lineas.push(`Generado: ${new Date().toLocaleDateString('es-ES')}`);
-    lineas.push(`ICM: ${ultimo?.icm_total}/100 | Edad metabólica: ${ultimo?.edad_metabolica} años`);
-    lineas.push(`mymetaboliq.com`);
-    lineas.push('');
-    lineas.push('═══════════════════════════════════');
-    lineas.push('DIETA SEMANAL');
-    lineas.push('═══════════════════════════════════');
-
-    planGenerado?.dieta?.forEach(d => {
-      lineas.push('');
-      lineas.push(`${d.dia.toUpperCase()}`);
-      lineas.push(`Desayuno: ${d.desayuno}`);
-      lineas.push(`Comida: ${d.comida}`);
-      lineas.push(`Cena: ${d.cena}`);
-      lineas.push(`Snack: ${d.snack}`);
-    });
-
-    lineas.push('');
-    lineas.push('═══════════════════════════════════');
-    lineas.push('EJERCICIOS');
-    lineas.push('═══════════════════════════════════');
-
-    planGenerado?.ejercicios?.forEach(d => {
-      lineas.push('');
-      lineas.push(`${d.dia.toUpperCase()} — ${d.tipo}`);
-      d.ejercicios?.forEach(e => lineas.push(`  • ${e}`));
-    });
-
-    lineas.push('');
-    lineas.push('═══════════════════════════════════');
-    lineas.push('LISTA DE LA COMPRA');
-    lineas.push('═══════════════════════════════════');
-
-    Object.entries(planGenerado?.compra || {}).forEach(([seccion, items]) => {
-      lineas.push('');
-      lineas.push(seccion.toUpperCase());
-      items?.forEach(item => lineas.push(`  ☐ ${item}`));
-    });
-
-    lineas.push('');
-    lineas.push('═══════════════════════════════════');
-    lineas.push('SUPLEMENTOS');
-    lineas.push('═══════════════════════════════════');
-
-    planGenerado?.suplementos?.forEach(s => {
-      lineas.push('');
-      lineas.push(`${s.nombre} — ${s.prioridad}`);
-      lineas.push(`Dosis: ${s.dosis}`);
-      lineas.push(`${s.motivo}`);
-    });
-
-    const blob = new Blob([lineas.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `plan-${objetivoActivo}-${new Date().toLocaleDateString('es-ES').replace(/\//g, '-')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: font }}>
       <style>{`@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }`}</style>
 
+      {/* MODAL CONFIGURACIÓN */}
+      {mostrarConfig && (
+        <ConfiguracionMetabolica
+          ultimo={ultimo}
+          email={email}
+          onGuardar={(cfg) => {
+            setObjetivoId(cfg.objetivoId);
+            setMostrarConfig(false);
+          }}
+          onCerrar={() => setMostrarConfig(false)}
+        />
+      )}
+
       {/* NAV */}
       <nav style={{ background: C.green, padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontWeight: 900, fontSize: 18, color: C.white }}>
           🌿 my<span style={{ color: C.greenLight }}>metaboliq</span>
         </span>
-        <a href="/" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, textDecoration: 'none' }}>← Nuevo test</a>
+        <a href="/" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, textDecoration: 'none' }}>Nuevo test</a>
       </nav>
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px 80px' }}>
@@ -316,7 +212,7 @@ export default function Dashboard() {
                 style={{ flex: 1, padding: '12px 18px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 14, background: C.white, fontFamily: font, outline: 'none', color: C.dark }}
               />
               <button onClick={buscarDatos} disabled={cargando} style={{ background: C.orange, color: C.white, border: 'none', padding: '12px 22px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>
-                {cargando ? '...' : 'Ver →'}
+                {cargando ? '...' : 'Ver'}
               </button>
             </div>
             {error && <p style={{ color: C.orange, fontSize: 13, marginTop: 16 }}>{error}</p>}
@@ -346,7 +242,7 @@ export default function Dashboard() {
                     {Math.round(ultimo.edad_metabolica - (ultimo.delta_anos || 0))}
                   </div>
                 </div>
-                <div style={{ fontSize: 20, color: 'rgba(255,255,255,0.35)', marginBottom: 14 }}>→</div>
+                <div style={{ fontSize: 20, color: 'rgba(255,255,255,0.35)', marginBottom: 14 }}>{'→'}</div>
                 <div style={{ background: C.white, borderRadius: 12, padding: '14px 20px', textAlign: 'center', flex: 1 }}>
                   <div style={{ fontSize: 9, color: C.orange, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 4 }}>Edad metabólica</div>
                   <div style={{ fontFamily: 'Georgia, serif', fontSize: 60, color: C.orange, lineHeight: 1 }}>{ultimo.edad_metabolica}</div>
@@ -357,7 +253,7 @@ export default function Dashboard() {
                     color: ultimo.delta_anos <= 0 ? '#3B6D11' : C.orange,
                     fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 100, marginTop: 6
                   }}>
-                    {ultimo.delta_anos <= 0 ? `−${Math.abs(ultimo.delta_anos)} años ↑` : `+${ultimo.delta_anos} años ↓`}
+                    {ultimo.delta_anos <= 0 ? `${Math.abs(ultimo.delta_anos)} años menos` : `+${ultimo.delta_anos} años`}
                   </div>
                 </div>
               </div>
@@ -579,13 +475,17 @@ export default function Dashboard() {
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>9,90€/mes · Cancela cuando quieras</div>
               </div>
               <a href="#" style={{ background: C.white, color: C.orange, padding: '10px 22px', borderRadius: 100, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                Activar suscripción →
+                Activar suscripción
               </a>
             </div>
 
-
             {/* PLAN METABÓLICO */}
-            <PlanMetabolico ultimo={ultimo} nombre={ultimo?.nombre} />
+            <PlanMetabolico
+              ultimo={ultimo}
+              email={email}
+              objetivoId={objetivoId}
+              onAbrirConfig={() => setMostrarConfig(true)}
+            />
 
             {/* COACH */}
             <div style={{ background: C.green, borderRadius: 16, padding: '20px 24px' }}>
@@ -601,7 +501,7 @@ export default function Dashboard() {
             {/* Preguntas sugeridas */}
             <div style={{ background: C.orangePale, border: `1px solid #F9CFA8`, borderRadius: 14, padding: 20 }}>
               <div style={{ fontSize: 12, color: C.orange, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
-                💬 Preguntas frecuentes — toca para respuesta inmediata
+                💬 Preguntas frecuentes
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
                 {preguntasSugeridas.map((p, i) => (
@@ -629,7 +529,7 @@ export default function Dashboard() {
                   style={{ flex: 1, padding: '11px 16px', border: `1.5px solid #F9CFA8`, borderRadius: 100, fontSize: 13, background: C.white, fontFamily: font, outline: 'none', color: C.dark }}
                 />
                 <button onClick={() => consultaLibre.trim() && responderConsulta()} style={{ background: C.orange, color: C.white, border: 'none', padding: '11px 20px', borderRadius: 100, fontSize: 13, cursor: 'pointer', fontFamily: font, fontWeight: 600 }}>
-                  Preguntar →
+                  Preguntar
                 </button>
               </div>
             </div>
@@ -662,12 +562,12 @@ export default function Dashboard() {
             {datos.length === 1 && (
               <div style={{ background: C.greenPale, border: `1px solid #C8E8B0`, borderRadius: 14, padding: 20, textAlign: 'center' }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>📅</div>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark, marginBottom: 6 }}>Vuelve en 30 días</div>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark, marginBottom: 6 }}>Vuelve cuando notes cambios</div>
                 <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.6, marginBottom: 16 }}>
-                  Cuando hagas tu segundo test verás aquí tu evolución y el gráfico de progreso del ICM.
+                  En descanso y nutrición los cambios son medibles en 1-2 semanas. Tú decides cuándo volver.
                 </div>
                 <a href="/bot" style={{ display: 'inline-block', background: C.green, color: C.white, padding: '10px 24px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                  Hacer nuevo test →
+                  Hacer nuevo test
                 </a>
               </div>
             )}
