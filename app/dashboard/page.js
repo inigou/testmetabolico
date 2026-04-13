@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import PlanMetabolico from './Planmetabolico';
 import ConfiguracionMetabolica from './ConfiguracionMetabolica';
+import DailyCheckIn from './DailyCheckIn';
 
 const C = {
   bg: '#F7F4EE',
@@ -38,7 +39,7 @@ export default function Dashboard() {
   const [historialConsultas, setHistorialConsultas] = useState([]);
   const [mostrarConfig, setMostrarConfig] = useState(false);
   const [objetivoId, setObjetivoId] = useState('mantener');
-
+  const [weather, setWeather] = useState(null);
   const ultimo = datos?.[datos.length - 1];
   const anterior = datos?.[datos.length - 2];
   const deltaICM = anterior ? (ultimo?.icm_total - anterior?.icm_total).toFixed(1) : null;
@@ -329,6 +330,15 @@ export default function Dashboard() {
                 </span>
               </div>
             </div>
+            
+            {/* DAILY CHECK-IN */}
+            <DailyCheckIn
+              email={email}
+              perfil={ultimo}
+              objetivoId={objetivoId}
+              onWeatherUpdate={(w) => setWeather(w)}
+            />
+
 
             {/* Gráfico */}
             {datos.length > 1 && (

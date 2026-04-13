@@ -96,9 +96,13 @@ export default function PlanMetabolico({ ultimo, email, objetivoId, onAbrirConfi
       let prefTexto = '';
       try {
         const cfg = JSON.parse(localStorage.getItem(`config_${email}`) || '{}');
-        if (cfg.excluidos?.length) prefTexto += `Sin: ${cfg.excluidos.join(', ')}. `;
-        if (cfg.tipoDieta && cfg.tipoDieta !== 'omnivoro') prefTexto += `Dieta ${cfg.tipoDieta}. `;
-        if (cfg.nivelCocina === 'rapido') prefTexto += 'Recetas rápidas menos de 20min. ';
+        if (cfg.excluidos?.length) prefTexto += `ALIMENTOS PROHIBIDOS (nunca incluir): ${cfg.excluidos.join(', ')}. `;
+        if (cfg.otrosExcluidos) prefTexto += `También excluye: ${cfg.otrosExcluidos}. `;
+        if (cfg.tipoDieta && cfg.tipoDieta !== 'omnivoro') prefTexto += `DIETA ESTRICTA: ${cfg.tipoDieta} (no incluir carne, pescado ni derivados animales si es vegano/vegetariano). `;
+        if (cfg.tipoDieta === 'vegetariano') prefTexto += `SIN carne de ningún tipo. Proteína de huevos, lácteos y legumbres. `;
+        if (cfg.tipoDieta === 'vegano') prefTexto += `SIN ningún producto animal. Proteína de legumbres, tofu, tempeh, seitán. `;
+        if (cfg.nivelCocina === 'rapido') prefTexto += 'Recetas de menos de 20 minutos. ';
+        if (cfg.restricciones?.length) prefTexto += `Restricciones adicionales: ${cfg.restricciones.join(', ')}. `;
       } catch (e) { console.error(e); }
 
       const res = await fetch('/api/coach', {
