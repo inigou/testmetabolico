@@ -7,7 +7,17 @@ const client = new Anthropic({
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { pregunta, perfil, tipo } = body;
+    const { pregunta, perfil, tipo, historial, contexto_dia } = body;
+
+    // 🛡️ PRO-TIP 3: Validación temprana de seguridad
+    if (!perfil) {
+      return Response.json({ error: "Datos de perfil no proporcionados" }, { status: 400 });
+    }
+
+    // 🗓️ PRO-TIP 1: Consciencia temporal (Qué día es hoy)
+    const fechaHoy = new Date().toLocaleDateString('es-ES', { 
+      weekday: 'long', day: 'numeric', month: 'long' 
+    });
 
     if (tipo === 'plan') {
       const message = await client.messages.create({
@@ -55,9 +65,11 @@ Responde SOLO JSON valido sin markdown ni backticks.`
       }
     }
 
-    // Construir historial de conversación
-    const historialMensajes = (body.historial || [])
+    // 💸 PRO-TIP 2: Límite de historial (Protección de costes)
+    // Filtramos mensajes válidos, nos quedamos SOLO con los últimos 10, y los mapeamos.
+    const historialMensajes = (historial || [])
       .filter(m => m.texto && !m.cargando)
+      .slice(-10) 
       .map(m => ({
         role: m.rol === 'usuario' ? 'user' : 'assistant',
         content: m.texto,
@@ -94,12 +106,19 @@ REGLAS CRITICAS:
 - Bloque mas fuerte: ${perfil.mejor_bloque}
 - Bloque a mejorar: ${perfil.peor_bloque}
 - Scores: ECO ${perfil.eco} EFH ${perfil.efh} NUT ${perfil.nut} DES ${perfil.des} VIT ${perfil.vit}
+- Fecha actual: Hoy es ${fechaHoy}
 
-Ten en cuenta este perfil en toda la conversacion.`,
+${contexto_dia ? `Contexto de hoy:
+- Estado metabolico: ${contexto_dia.weather || 'N/A'}
+- Comidas de hoy: ${JSON.stringify(contexto_dia.comidas || {})}
+- Entrenamiento de hoy: ${JSON.stringify(contexto_dia.entrenamiento || {})}
+` : ''}
+
+Ten en cuenta este perfil y contexto en toda la conversacion.`,
         },
         {
           role: "assistant",
-          content: "Entendido, tengo tu perfil metabolico. Puedes preguntarme lo que necesites.",
+          content: "Entendido, tengo tu perfil y el contexto de hoy. Puedes preguntarme lo que necesites.",
         },
         ...historialMensajes,
         {
