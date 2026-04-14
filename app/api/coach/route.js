@@ -9,22 +9,22 @@ export async function POST(request) {
     const body = await request.json();
     const { pregunta, perfil, tipo, historial, contexto_dia } = body;
 
-    // 🛡️ PRO-TIP 3: Validación temprana de seguridad
     if (!perfil) {
       return Response.json({ error: "Datos de perfil no proporcionados" }, { status: 400 });
     }
 
-    // 🗓️ PRO-TIP 1: Consciencia temporal (Qué día es hoy)
-    const fechaHoy = new Date().toLocaleDateString('es-ES', { 
-      weekday: 'long', day: 'numeric', month: 'long' 
+    const fechaHoy = new Date().toLocaleDateString('es-ES', {
+      weekday: 'long', day: 'numeric', month: 'long'
     });
 
+    // ─── RAMA PLAN SEMANAL ────────────────────────────────────────────
     if (tipo === 'plan') {
       const message = await client.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 4096,
         system: `Eres un especialista en nutricion deportiva. Genera planes semanales en JSON estricto.
-        OBJETIVO DEL USUARIO: ${perfil.objetivo}
+OBJETIVO DEL USUARIO: ${perfil.objetivo}
+${perfil.preferencias ? `PREFERENCIAS Y RESTRICCIONES ALIMENTARIAS (OBLIGATORIO RESPETAR): ${perfil.preferencias}` : ''}
 
 REGLAS ABSOLUTAS:
 - Responde SOLO con JSON valido, sin texto antes ni despues
@@ -37,15 +37,16 @@ REGLAS ABSOLUTAS:
         messages: [{
           role: "user",
           content: `Genera plan semanal para objetivo: ${perfil.objetivo}. ICM ${perfil.icm}/100, edad metabolica ${perfil.edad_metabolica} anos, mejor bloque ${perfil.mejor_bloque}, peor bloque ${perfil.peor_bloque}.
+${perfil.preferencias ? `\nRESPETA ESTRICTAMENTE: ${perfil.preferencias}` : ''}
 
 IMPORTANTE para las comidas:
 - Incluye siempre gramos exactos: "Pollo a la plancha 200g + arroz integral 80g + brocoli al vapor"
 - Tecnicas de coccion reales: plancha, horno, vapor, crudo. Nunca frito
 - En desayuno incluye cantidades: "Avena 60g + leche 200ml + platano"
 - Snacks con gramos: "Almendras 30g + manzana 150g"
-- Despues indica como quedarian los macros del dia para que el cliente pueda tener una referencia.
+- Indica los macros aproximados al final de cada dia entre parentesis: "(~P:45g C:120g G:30g)"
 
-Para el campo directrices incluye 6 pautas generales como: cocinar a la plancha u horno, evitar postres procesados, si bebes alcohol elegir vino tinto con moderacion, beber agua antes de cada comida, comer despacio, ultima comida 2h antes de dormir.
+Para el campo directrices incluye 6 pautas generales: cocinar a la plancha u horno, evitar postres procesados, si bebes alcohol elegir vino tinto con moderacion, beber agua antes de cada comida, comer despacio, ultima comida 2h antes de dormir.
 
 Responde SOLO JSON valido sin markdown ni backticks.`
         }]
@@ -68,78 +69,69 @@ Responde SOLO JSON valido sin markdown ni backticks.`
       }
     }
 
-    // 💸 PRO-TIP 2: Límite de historial (Protección de costes)
-    // Filtramos mensajes válidos, nos quedamos SOLO con los últimos 10, y los mapeamos.
+    // ─── RAMA CHAT / COACH ────────────────────────────────────────────
     const historialMensajes = (historial || [])
       .filter(m => m.texto && !m.cargando)
-      .slice(-10) 
+      .slice(-10)
       .map(m => ({
         role: m.rol === 'usuario' ? 'user' : 'assistant',
         content: m.texto,
       }));
 
+    // Contexto de hoy en lenguaje natural
+    const contextoHoyTexto = contexto_dia ? `
+CONTEXTO DE HOY (usa esto para personalizar tu respuesta):
+- Estado metabolico del usuario hoy: ${contexto_dia.weather || 'N/A'}
+- Comidas planificadas hoy: ${contexto_dia.comidas
+    ? `Desayuno: ${contexto_dia.comidas.desayuno || '-'} | Comida: ${contexto_dia.comidas.comida || '-'} | Cena: ${contexto_dia.comidas.cena || '-'} | Snack: ${contexto_dia.comidas.snack || '-'}`
+    : 'Sin plan de comidas'}
+- Entrenamiento de hoy: ${contexto_dia.entrenamiento
+    ? `${contexto_dia.entrenamiento.tipo || 'Sin tipo'}: ${(contexto_dia.entrenamiento.ejercicios || []).join(', ')}`
+    : 'Dia de descanso'}
+` : '';
+
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
-      system: `Actua como un Especialista Senior en Nutricion Deportiva, Antropometria y Medicina Preventiva Funcional para mymetaboliq.com. Tu enfoque combina la rigurosidad cientifica de la nutricion moderna con la vision sistemica de la medicina holistica y el slow aging.
-      OBJETIVO DEL USUARIO: ${perfil.objetivo}
-      
-      ADAPTACION POR OBJETIVO:
-      Debes ajustar tu enfoque segun el objetivo del usuario:
+      system: `Actua como un Especialista Senior en Nutricion Deportiva, Antropometria y Medicina Preventiva Funcional para mymetaboliq.com. Tu enfoque combina la rigurosidad cientifica con la vision del slow aging y la medicina funcional.
 
-      - Slow aging → prioriza salud metabolica, longevidad, inflamacion baja y masa magra
-      - Hipertrofia moderada → equilibrio entre ganancia muscular y salud metabolica
-      - Hipertrofia agresiva → maxima ganancia muscular aceptando algo de grasa
-      - Mantenimiento → estabilidad y adherencia
-      - Definicion moderada → perdida de grasa sostenible preservando musculo
-      - Definicion agresiva → perdida de grasa eficiente con trade-offs
-      - Perdida de peso moderada → mejora de salud general
+OBJETIVO DEL USUARIO: ${perfil.objetivo || 'No especificado'}
 
-      Adaptas SIEMPRE:
-      - nivel calorico
-      - agresividad del enfoque
-      - tipo de recomendaciones
+ADAPTACION POR OBJETIVO:
+- Slow aging → longevidad, inflamacion baja, masa magra, salud mitocondrial
+- Hipertrofia moderada → equilibrio ganancia muscular y salud metabolica
+- Hipertrofia agresiva → maxima ganancia muscular, acepta algo de grasa
+- Mantener peso → estabilidad y adherencia a largo plazo
+- Definicion suave → perdida de grasa sostenible preservando musculo
+- Definicion agresiva → perdida de grasa eficiente, acepta trade-offs
+- Perdida rapida → deficit agresivo con proteccion muscular maxima
 
-      ---
+FILOSOFIA BASE (Francis Holway + nutricion evolutiva):
+- Prioridad absoluta: composicion corporal sobre peso total
+- Nutricion alineada con fisiologia humana ancestral
+- Pragmatismo basado en evidencia: si los datos cambian, las recomendaciones cambian
+- Los 4 pilares: sensibilidad a la insulina, inflamacion sistemica, perfil lipidico, masa muscular
 
-      FILOSOFIA BASE:
-      - Inspiracion en Francis Holway: prioridad en composicion corporal
-      - Enfoque evolutivo: nutricion alineada con fisiologia humana
-      - Pragmatismo: si la evidencia cambia, tu cambias
-      - Slow aging como base:
-        - salud mitocondrial
-        - control glucemico
-        - masa magra
+CUANDO TIENES CONTEXTO DEL DIA:
+- Conecta tu respuesta con el estado metabolico actual del usuario
+- Si el entreno de hoy es de fuerza, refuerza la ingesta proteica post-entreno
+- Si el estado es de baja energia, prioriza recuperacion sobre rendimiento
+- Menciona las comidas del dia si son relevantes para la pregunta
+- Se especifico: "Para tu comida de hoy con pollo..." en vez de "en general..."
 
-      ---
+ESTILO DE RESPUESTA:
+- Maximo 180 palabras (si hay contexto del dia, puedes ir hasta 220)
+- Lenguaje cercano y directo, como un coach de confianza
+- Profesional pero sin jerga innecesaria
+- 1 emoji opcional y con proposito, no decorativo
+- Estructura: respuesta directa → explicacion breve → accion concreta
 
-      ESTILO:
-      - Lenguaje claro y entendible
-      - Profesional pero cercano
-      - Maximo 180 palabras
-      - Explicaciones simples si hay tecnicismos
-      - 1 emoji opcional
-
-      ---
-
-      REGLAS:
-      - NUNCA diagnostiques
-      - SIEMPRE incluye disclaimer sutil al final
-      - NO hagas preguntas
-      - Si faltan datos, asume contexto razonable
-      - Analiza modas desde fisiologia, no opinion
-
-      ---
-
-      ENFOQUE:
-      Prioriza:
-      - sensibilidad a la insulina
-      - inflamacion
-      - perfil lipidico
-      - masa muscular
-
-      Tu objetivo es dar respuestas claras, accionables y adaptadas al objetivo del usuario.`,
-
+REGLAS NO NEGOCIABLES:
+- NUNCA diagnostiques ni prescribas medicacion
+- NUNCA hagas preguntas al usuario (el perfil ya tiene los datos)
+- Si faltan datos, asume el contexto mas razonable y explicalo brevemente
+- Analiza tendencias y modas siempre desde fisiologia, no desde opinion
+- Disclaimer medico SOLO si la pregunta toca patologias, medicamentos o condiciones clinicas`,
 
       messages: [
         {
@@ -149,20 +141,14 @@ Responde SOLO JSON valido sin markdown ni backticks.`
 - Edad metabolica: ${perfil.edad_metabolica} anos
 - Bloque mas fuerte: ${perfil.mejor_bloque}
 - Bloque a mejorar: ${perfil.peor_bloque}
-- Scores: ECO ${perfil.eco} EFH ${perfil.efh} NUT ${perfil.nut} DES ${perfil.des} VIT ${perfil.vit}
-- Fecha actual: Hoy es ${fechaHoy}
-
-${contexto_dia ? `Contexto de hoy:
-- Estado metabolico: ${contexto_dia.weather || 'N/A'}
-- Comidas de hoy: ${JSON.stringify(contexto_dia.comidas || {})}
-- Entrenamiento de hoy: ${JSON.stringify(contexto_dia.entrenamiento || {})}
-` : ''}
-
-Ten en cuenta este perfil y contexto en toda la conversacion.`,
+- Scores detallados → ECO: ${perfil.eco} | EFH: ${perfil.efh} | NUT: ${perfil.nut} | DES: ${perfil.des} | VIT: ${perfil.vit}
+- Hoy es: ${fechaHoy}
+${contextoHoyTexto}
+Ten en cuenta este perfil completo en toda la conversacion.`,
         },
         {
           role: "assistant",
-          content: "Entendido, tengo tu perfil y el contexto de hoy. Puedes preguntarme lo que necesites.",
+          content: "Perfecto, tengo tu perfil completo y el contexto de hoy. Dime que necesitas.",
         },
         ...historialMensajes,
         {
@@ -175,7 +161,7 @@ Ten en cuenta este perfil y contexto en toda la conversacion.`,
     return Response.json({ respuesta: message.content[0].text });
 
   } catch (error) {
-    console.error(error);
+    console.error('Coach API error:', error);
     return Response.json({ error: "Error al conectar con el coach" }, { status: 500 });
   }
 }
