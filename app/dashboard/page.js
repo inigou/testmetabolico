@@ -131,7 +131,6 @@ function PanicoModal({ onCerrar, onEnviar }) {
       <div onClick={onCerrar} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 680, borderRadius: '20px 20px 0 0', background: C.white, overflow: 'hidden', animation: 'slideUp 0.3s ease' }}>
         <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
-
         <div style={{ background: '#E65100', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: C.white }}>⚠️ Registro de evento</div>
@@ -139,7 +138,6 @@ function PanicoModal({ onCerrar, onEnviar }) {
           </div>
           <button onClick={onCerrar} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, width: 34, height: 34, borderRadius: '50%', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
-
         <div style={{ padding: '20px' }}>
           <div style={{ fontSize: 11, color: '#9A9790', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>¿Qué ha pasado hoy?</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
@@ -155,18 +153,15 @@ function PanicoModal({ onCerrar, onEnviar }) {
               </button>
             ))}
           </div>
-
           {eventoSel && (
             <div style={{ background: C.orangePale, border: '1px solid #F9CFA8', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: '#C05010' }}>
               Protocolo sugerido: <strong>{eventoSel.protocolo}</strong>
             </div>
           )}
-
           <textarea value={detalle} onChange={e => setDetalle(e.target.value)}
             placeholder="Añade detalle opcional (ej: 3 copas de vino, me acosté a las 2am...)"
             style={{ width: '100%', height: 72, padding: '10px 14px', border: `1.5px solid ${C.light}`, borderRadius: 12, fontSize: 12, fontFamily: font, resize: 'none', outline: 'none', background: C.bg, color: C.dark, boxSizing: 'border-box', marginBottom: 14 }}
           />
-
           <button onClick={() => seleccion && onEnviar(eventoSel, detalle)} disabled={!seleccion}
             style={{ width: '100%', background: seleccion ? C.orange : C.light, color: C.white, border: 'none', padding: '14px', borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: seleccion ? 'pointer' : 'not-allowed', fontFamily: font }}>
             Activar protocolo de rescate →
@@ -194,10 +189,10 @@ const OBJETIVOS = [
   { id: 'perdida_rapida', emoji: '⚡', nombre: 'Pérdida rápida' },
 ];
 const getDiaHoy = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
-const icmColor = (v) => { if (v >= 80) return '#2E7D32'; if (v >= 65) return '#5B9B3C'; if (v >= 50) return '#F9A825'; if (v >= 35) return '#E8621A'; return '#C62828'; };
-const icmLabel = (v) => { if (v >= 80) return 'Metabolismo óptimo'; if (v >= 65) return 'Metabolismo activo'; if (v >= 50) return 'Metabolismo moderado'; if (v >= 35) return 'Metabolismo lento'; return 'Metabolismo crítico'; };
-const scoreColor = (v) => { if (v >= 80) return '#2E7D32'; if (v >= 65) return '#5B9B3C'; if (v >= 50) return '#F9A825'; if (v >= 35) return '#E8621A'; return '#C62828'; };
-const scoreBg = (v) => { if (v >= 80) return '#E8F5E9'; if (v >= 65) return '#EBF5E4'; if (v >= 50) return '#FFFDE7'; if (v >= 35) return '#FDF0E8'; return '#FFEBEE'; };
+const icmColor    = (v) => { if (v >= 80) return '#2E7D32'; if (v >= 65) return '#5B9B3C'; if (v >= 50) return '#F9A825'; if (v >= 35) return '#E8621A'; return '#C62828'; };
+const icmLabel    = (v) => { if (v >= 80) return 'Metabolismo óptimo'; if (v >= 65) return 'Metabolismo activo'; if (v >= 50) return 'Metabolismo moderado'; if (v >= 35) return 'Metabolismo lento'; return 'Metabolismo crítico'; };
+const scoreColor  = (v) => { if (v >= 80) return '#2E7D32'; if (v >= 65) return '#5B9B3C'; if (v >= 50) return '#F9A825'; if (v >= 35) return '#E8621A'; return '#C62828'; };
+const scoreBg     = (v) => { if (v >= 80) return '#E8F5E9'; if (v >= 65) return '#EBF5E4'; if (v >= 50) return '#FFFDE7'; if (v >= 35) return '#FDF0E8'; return '#FFEBEE'; };
 const icmBarColor = (v) => { if (v >= 80) return 'linear-gradient(90deg,#2E7D32,#5B9B3C)'; if (v >= 65) return 'linear-gradient(90deg,#5B9B3C,#7AB648)'; if (v >= 50) return 'linear-gradient(90deg,#F9A825,#FBC02D)'; if (v >= 35) return 'linear-gradient(90deg,#E8621A,#F57C00)'; return 'linear-gradient(90deg,#C62828,#E53935)'; };
 
 export default function Dashboard() {
@@ -274,6 +269,8 @@ export default function Dashboard() {
     generarMensajeProactivo();
   }, [weather, planDia]);
 
+  // ── AUDITORÍA: email añadido al payload ──────────────────────────
+
   const generarMensajeProactivo = async () => {
     if (!ultimo) return;
     setChatCargando(true);
@@ -293,6 +290,7 @@ export default function Dashboard() {
       const res = await fetch('/api/coach', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          email,  // ← AUDITORÍA: el coach recibe el email para consultar logs en BD
           pregunta: `Genera un mensaje de bienvenida directo (máximo 3 frases + 1 pregunta táctica). Estado de hoy: "${weather?.estado}". Plan: ${comidaHoy} Entreno: ${entrenoHoy}. Bloque débil: ${peor.nombre}. Sé específico.`,
           perfil: { icm: ultimo.icm_total, categoria: ultimo.icm_total >= 65 ? 'Metabolismo activo' : 'Metabolismo moderado', edad_metabolica: ultimo.edad_metabolica, mejor_bloque: mejor.nombre, peor_bloque: peor.nombre, eco: ultimo.eco_score, efh: ultimo.efh_score, nut: ultimo.nut_score, des: ultimo.des_score, vit: ultimo.vit_score },
           contexto_dia: { weather: weather?.estado, comidas: planDia?.comidas, entrenamiento: planDia?.entrenamiento },
@@ -315,18 +313,17 @@ export default function Dashboard() {
     setChatAbierto(true);
     setChatCargando(true);
     setMensajesChat(prev => [...prev, { rol: 'bot', texto: '', cargando: true, esPanico: true }]);
-
     const scores = [
       { nombre: 'actividad física', val: ultimo?.efh_score },
       { nombre: 'nutrición', val: ultimo?.nut_score },
       { nombre: 'descanso', val: ultimo?.des_score },
     ];
     const peor = scores.reduce((a, b) => (a.val || 0) < (b.val || 0) ? a : b);
-
     try {
       const res = await fetch('/api/coach', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          email,  // ← AUDITORÍA: el coach recibe el email para consultar logs en BD
           pregunta: `CONTEXTO DE RESCATE METABÓLICO: El usuario ha registrado el siguiente evento disruptivo: "${evento.label}"${detalle ? ` con el detalle: "${detalle}"` : ''}. Protocolo base: ${evento.protocolo}.
 
 Genera un mensaje de rescate empático y práctico (máximo 4 frases):
@@ -367,7 +364,10 @@ Sé específico, directo y sin dramas.`,
     try {
       const res = await fetch('/api/coach', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tipo: 'plan', perfil: { objetivo: obj.nombre, icm: ultimo.icm_total, categoria: ultimo.icm_total >= 65 ? 'Metabolismo activo' : 'Metabolismo moderado', edad_metabolica: ultimo.edad_metabolica, mejor_bloque: mejor.nombre, peor_bloque: peor.nombre, eco: ultimo.eco_score, efh: ultimo.efh_score, nut: ultimo.nut_score, des: ultimo.des_score, vit: ultimo.vit_score, preferencias: prefTexto } }),
+        body: JSON.stringify({
+          tipo: 'plan',
+          perfil: { objetivo: obj.nombre, icm: ultimo.icm_total, categoria: ultimo.icm_total >= 65 ? 'Metabolismo activo' : 'Metabolismo moderado', edad_metabolica: ultimo.edad_metabolica, mejor_bloque: mejor.nombre, peor_bloque: peor.nombre, eco: ultimo.eco_score, efh: ultimo.efh_score, nut: ultimo.nut_score, des: ultimo.des_score, vit: ultimo.vit_score, preferencias: prefTexto },
+        }),
       });
       const data = await res.json();
       if (data.plan) {
@@ -391,11 +391,19 @@ Sé específico, directo y sin dramas.`,
     try {
       const res = await fetch('/api/coach', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pregunta: q, historial: historialLimpio, contexto_dia: { weather: weather?.estado, comidas: planDia?.comidas, entrenamiento: planDia?.entrenamiento }, perfil: { icm: ultimo?.icm_total, categoria: ultimo?.icm_total >= 65 ? 'Metabolismo activo' : 'Metabolismo moderado', edad_metabolica: ultimo?.edad_metabolica, mejor_bloque: 'actividad física', peor_bloque: peor.nombre, eco: ultimo?.eco_score, efh: ultimo?.efh_score, nut: ultimo?.nut_score, des: ultimo?.des_score, vit: ultimo?.vit_score } }),
+        body: JSON.stringify({
+          email,  // ← AUDITORÍA: el coach recibe el email para consultar logs en BD
+          pregunta: q,
+          historial: historialLimpio,
+          contexto_dia: { weather: weather?.estado, comidas: planDia?.comidas, entrenamiento: planDia?.entrenamiento },
+          perfil: { icm: ultimo?.icm_total, categoria: ultimo?.icm_total >= 65 ? 'Metabolismo activo' : 'Metabolismo moderado', edad_metabolica: ultimo?.edad_metabolica, mejor_bloque: 'actividad física', peor_bloque: peor.nombre, eco: ultimo?.eco_score, efh: ultimo?.efh_score, nut: ultimo?.nut_score, des: ultimo?.des_score, vit: ultimo?.vit_score },
+        }),
       });
       const data = await res.json();
       setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: data.respuesta || '', cargando: false } : m));
-    } catch { setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: 'Error al conectar.', cargando: false } : m)); }
+    } catch {
+      setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: 'Error al conectar.', cargando: false } : m));
+    }
     setChatCargando(false);
   };
 
@@ -688,6 +696,7 @@ Sé específico, directo y sin dramas.`,
                     <a href="/bot" style={{ display: 'inline-block', background: C.green, color: C.white, padding: '10px 22px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Hacer nuevo test</a>
                   </div>
                 )}
+
               </div>
             </details>
 
