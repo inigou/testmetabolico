@@ -5,7 +5,6 @@ import ConfiguracionMetabolica from './ConfiguracionMetabolica';
 import DailyCheckIn from './DailyCheckIn';
 import WeeklyPlannerModal from './WeeklyPlannerModal';
 
-// ── Helpers Supabase inline ─────────────────────────────────────────
 const SB_URL = 'https://khinwyoejhoqqunfyjft.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoaW53eW9lamhvcXF1bmZ5amZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjgxMzksImV4cCI6MjA5MDc0NDEzOX0.CE8EzbHQLdKN9Ag0nZVGS3gHPOc4NK464RyLtrP_nYM';
 const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
@@ -44,7 +43,7 @@ function calcularRacha(logs) {
   return r;
 }
 
-// ── ChatPanel — fuera del componente para evitar bug de foco ────────
+// ── ChatPanel ────────────────────────────────────────────────────────
 function ChatPanel({ mensajesChat, inputChat, setInputChat, chatCargando, enviarMensaje, onCerrar, chatEndRef }) {
   const font = 'Trebuchet MS, Verdana, sans-serif';
   const Cc = { green: '#5B9B3C', orange: '#E8621A', white: '#FFFFFF', dark: '#1A1A1A', mid: '#6B6B6B', light: '#E8E4DC', bg: '#F7F4EE' };
@@ -71,9 +70,9 @@ function ChatPanel({ mensajesChat, inputChat, setInputChat, chatCargando, enviar
             )}
             {m.rol === 'bot' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ maxWidth: '90%', background: m.esPanico ? '#FFF8EC' : Cc.white, border: `1px solid ${m.esPanico ? '#F9CFA8' : Cc.light}`, borderRadius: 14, padding: '12px 14px' }}>
+                <div style={{ maxWidth: '90%', background: m.esEvento ? '#FFF8EC' : Cc.white, border: `1px solid ${m.esEvento ? '#F9CFA8' : Cc.light}`, borderRadius: 14, padding: '12px 14px' }}>
                   {m.esProactivo && <div style={{ fontSize: 9, color: Cc.green, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🤖 Mensaje de hoy</div>}
-                  {m.esPanico && <div style={{ fontSize: 9, color: '#E8A020', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠️ Protocolo de rescate</div>}
+                  {m.esEvento && <div style={{ fontSize: 9, color: '#E8A020', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠️ Plan adaptado</div>}
                   {m.cargando
                     ? <div style={{ display: 'flex', gap: 4, padding: '4px 0' }}>{[0, 1, 2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: Cc.green, opacity: 0.6, animation: `bounce 1.2s ease-in-out ${j * 0.2}s infinite` }} />)}</div>
                     : <div style={{ fontSize: 13, color: Cc.dark, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{m.texto}</div>
@@ -82,9 +81,7 @@ function ChatPanel({ mensajesChat, inputChat, setInputChat, chatCargando, enviar
                 {m.esProactivo && m.chips?.length > 0 && !m.cargando && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 2 }}>
                     {m.chips.map((chip, ci) => (
-                      <button key={ci} onClick={() => enviarMensaje(chip)} style={{ background: Cc.white, border: `1.5px solid ${Cc.green}`, color: Cc.green, padding: '6px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>
-                        {chip}
-                      </button>
+                      <button key={ci} onClick={() => enviarMensaje(chip)} style={{ background: Cc.white, border: `1.5px solid ${Cc.green}`, color: Cc.green, padding: '6px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>{chip}</button>
                     ))}
                   </div>
                 )}
@@ -108,63 +105,100 @@ function ChatPanel({ mensajesChat, inputChat, setInputChat, chatCargando, enviar
   );
 }
 
-// ── Modal Botón de Pánico ───────────────────────────────────────────
-function PanicoModal({ onCerrar, onEnviar }) {
+// ── Súper-Botón de Eventos — reemplaza el antiguo botón de pánico ────
+function SuperBotonEventos({ onCerrar, onEnviar }) {
   const font = 'Trebuchet MS, Verdana, sans-serif';
-  const C = { bg: '#F7F4EE', green: '#5B9B3C', orange: '#E8621A', white: '#FFFFFF', dark: '#1A1A1A', mid: '#6B6B6B', light: '#E8E4DC', orangePale: '#FDF0E8' };
+  const C = { bg: '#F7F4EE', orange: '#E8621A', white: '#FFFFFF', dark: '#1A1A1A', mid: '#6B6B6B', light: '#E8E4DC', orangePale: '#FDF0E8', greenPale: '#EBF5E4', green: '#5B9B3C' };
   const [seleccion, setSeleccion] = useState('');
   const [detalle, setDetalle] = useState('');
+  const [diaEvento, setDiaEvento] = useState(5); // default sábado
 
+  const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const EVENTOS = [
-    { id: 'alcohol', emoji: '🍷', label: 'He bebido alcohol', protocolo: 'hidratación intensiva + ayuno suave' },
-    { id: 'comida_exceso', emoji: '🍕', label: 'Me he pasado comiendo', protocolo: 'compensación con proteína + caminata' },
-    { id: 'boda_evento', emoji: '🎉', label: 'Boda / celebración', protocolo: 'protocolo de reinicio al día siguiente' },
-    { id: 'no_dorm', emoji: '😴', label: 'He dormido muy poco', protocolo: 'recuperación activa + sin entreno intenso' },
-    { id: 'estres_agudo', emoji: '🔥', label: 'Día de estrés extremo', protocolo: 'gestión cortisol + magnesio' },
-    { id: 'saltado_plan', emoji: '🤷', label: 'Me he saltado el plan', protocolo: 'reinicio sin culpa + ajuste de mañana' },
+    { id: 'boda',          emoji: '💍', label: 'Boda o celebración',        protocolo: 'ajuste previo + recuperación al día siguiente' },
+    { id: 'viaje',         emoji: '✈️', label: 'Viaje o fuera de casa',      protocolo: 'opciones portátiles + descanso activo' },
+    { id: 'cena_social',   emoji: '🍽️', label: 'Cena social o restaurante', protocolo: 'estrategia de orden de platos + proteína prioritaria' },
+    { id: 'alcohol',       emoji: '🍷', label: 'He bebido alcohol',          protocolo: 'hidratación intensiva + ayuno suave' },
+    { id: 'exceso_comida', emoji: '🍕', label: 'Me he pasado comiendo',      protocolo: 'compensación con proteína + caminata 30 min' },
+    { id: 'mal_sueno',     emoji: '😴', label: 'He dormido muy poco',        protocolo: 'sin entreno intenso + magnesio + sueño prioritario' },
+    { id: 'estres',        emoji: '🔥', label: 'Semana de mucho estrés',     protocolo: 'gestión cortisol + adaptógenos' },
+    { id: 'saltado',       emoji: '🤷', label: 'Me he saltado el plan',      protocolo: 'reinicio sin culpa + ajuste de mañana' },
   ];
 
   const eventoSel = EVENTOS.find(e => e.id === seleccion);
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 600, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={onCerrar} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 680, borderRadius: '20px 20px 0 0', background: C.white, overflow: 'hidden', animation: 'slideUp 0.3s ease' }}>
-        <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
-        <div style={{ background: '#E65100', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: C.white }}>⚠️ Registro de evento</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>Tu racha no se interrumpe — el coach te ayuda a compensar</div>
+      <div onClick={onCerrar} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 680, borderRadius: '20px 20px 0 0', background: C.white, overflow: 'hidden', animation: 'slideUp 0.3s ease', maxHeight: '90dvh', display: 'flex', flexDirection: 'column' }}>
+        <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}} @keyframes shimmer{0%,100%{opacity:1}50%{opacity:0.6}}`}</style>
+
+        {/* Header gradiente animado */}
+        <div style={{ background: 'linear-gradient(135deg, #E65100, #E8621A, #F57C00)', padding: '18px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: C.white, marginBottom: 4 }}>🗓️ Adaptar plan al evento</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
+                ¿Tienes un evento o te has saltado el plan?<br />
+                <strong style={{ color: C.white }}>Lo adaptamos juntos y actualizamos tu semana.</strong>
+              </div>
+            </div>
+            <button onClick={onCerrar} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, width: 34, height: 34, borderRadius: '50%', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
           </div>
-          <button onClick={onCerrar} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, width: 34, height: 34, borderRadius: '50%', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+          <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 12px', fontSize: 11, color: 'rgba(255,255,255,0.9)' }}>
+            ✅ Tu racha no se interrumpe · La IA reescribirá los días afectados en tu plan
+          </div>
         </div>
-        <div style={{ padding: '20px' }}>
-          <div style={{ fontSize: 11, color: '#9A9790', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>¿Qué ha pasado hoy?</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-            {EVENTOS.map(ev => (
-              <button key={ev.id} onClick={() => setSeleccion(ev.id)} style={{
-                padding: '12px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: font,
-                background: seleccion === ev.id ? '#FDF0E8' : C.bg,
-                border: `2px solid ${seleccion === ev.id ? C.orange : C.light}`,
-                textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <span style={{ fontSize: 20 }}>{ev.emoji}</span>
-                <span style={{ fontSize: 12, color: '#1A1A1A', fontWeight: seleccion === ev.id ? 700 : 400 }}>{ev.label}</span>
-              </button>
-            ))}
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          {/* Selector de día */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: '#9A9790', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>¿Qué día es el evento?</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {DIAS.map((dia, i) => (
+                <button key={i} onClick={() => setDiaEvento(i)} style={{ padding: '6px 12px', borderRadius: 100, fontSize: 11, fontWeight: diaEvento === i ? 700 : 400, cursor: 'pointer', fontFamily: font, background: diaEvento === i ? C.orange : C.bg, color: diaEvento === i ? C.white : C.mid, border: `1.5px solid ${diaEvento === i ? C.orange : C.light}` }}>
+                  {dia}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Selector de evento */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: '#9A9790', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>¿Qué ha pasado o va a pasar?</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {EVENTOS.map(ev => (
+                <button key={ev.id} onClick={() => setSeleccion(ev.id)} style={{ padding: '12px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: font, background: seleccion === ev.id ? C.orangePale : C.bg, border: `2px solid ${seleccion === ev.id ? C.orange : C.light}`, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{ev.emoji}</span>
+                  <span style={{ fontSize: 11, color: C.dark, fontWeight: seleccion === ev.id ? 700 : 400, lineHeight: 1.4 }}>{ev.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Protocolo sugerido */}
           {eventoSel && (
-            <div style={{ background: C.orangePale, border: '1px solid #F9CFA8', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: '#C05010' }}>
-              Protocolo sugerido: <strong>{eventoSel.protocolo}</strong>
+            <div style={{ background: C.orangePale, border: '1px solid #F9CFA8', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+              <div style={{ fontSize: 10, color: '#9A9790', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Estrategia de la IA</div>
+              <div style={{ fontSize: 12, color: '#C05010', fontWeight: 600 }}>{eventoSel.protocolo}</div>
             </div>
           )}
+
+          {/* Detalle libre */}
           <textarea value={detalle} onChange={e => setDetalle(e.target.value)}
-            placeholder="Añade detalle opcional (ej: 3 copas de vino, me acosté a las 2am...)"
-            style={{ width: '100%', height: 72, padding: '10px 14px', border: `1.5px solid ${C.light}`, borderRadius: 12, fontSize: 12, fontFamily: font, resize: 'none', outline: 'none', background: C.bg, color: C.dark, boxSizing: 'border-box', marginBottom: 14 }}
+            placeholder="Cuéntanos más (opcional): ej. 'boda de 3 días en Sevilla', 'cena de trabajo con cliente'..."
+            style={{ width: '100%', height: 72, padding: '10px 14px', border: `1.5px solid ${C.light}`, borderRadius: 12, fontSize: 12, fontFamily: font, resize: 'none', outline: 'none', background: C.bg, color: C.dark, boxSizing: 'border-box', marginBottom: 6 }}
           />
-          <button onClick={() => seleccion && onEnviar(eventoSel, detalle)} disabled={!seleccion}
-            style={{ width: '100%', background: seleccion ? C.orange : C.light, color: C.white, border: 'none', padding: '14px', borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: seleccion ? 'pointer' : 'not-allowed', fontFamily: font }}>
-            Activar protocolo de rescate →
+          <div style={{ fontSize: 10, color: '#C0B8B0', marginBottom: 14, textAlign: 'right' }}>
+            La IA reescribirá el {seleccion ? `${DIAS[diaEvento]} y ${DIAS[(diaEvento + 1) % 7]}` : 'día del evento y el siguiente'} en tu plan
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div style={{ padding: '14px 20px', borderTop: `1px solid ${C.light}`, background: C.white, flexShrink: 0 }}>
+          <button onClick={() => seleccion && onEnviar(eventoSel, detalle, diaEvento)} disabled={!seleccion}
+            style={{ width: '100%', background: seleccion ? 'linear-gradient(135deg,#E65100,#E8621A)' : C.light, color: C.white, border: 'none', padding: '15px', borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: seleccion ? 'pointer' : 'not-allowed', fontFamily: font, boxShadow: seleccion ? '0 4px 20px rgba(230,81,0,0.35)' : 'none' }}>
+            {seleccion ? `Adaptar mi plan — ${DIAS[diaEvento]} →` : 'Selecciona un evento para continuar'}
           </button>
         </div>
       </div>
@@ -172,7 +206,7 @@ function PanicoModal({ onCerrar, onEnviar }) {
   );
 }
 
-// ── Constantes ──────────────────────────────────────────────────────
+// ── Constantes ───────────────────────────────────────────────────────
 const C = {
   bg: '#F7F4EE', green: '#5B9B3C', orange: '#E8621A', white: '#FFFFFF',
   dark: '#1A1A1A', mid: '#6B6B6B', light: '#E8E4DC', greenLight: '#EAF3DE',
@@ -210,7 +244,11 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(0);
   const [completedTasksHoy, setCompletedTasksHoy] = useState({});
   const [gastoActividadExtra, setGastoActividadExtra] = useState(0);
-  const [mostrarPanico, setMostrarPanico] = useState(false);
+  const [mostrarSuperBoton, setMostrarSuperBoton] = useState(false);
+  const [kcalConsumidas, setKcalConsumidas] = useState(0);
+
+  // Presupuesto base desde configuración guardada
+  const [presupuestoBase, setPresupuestoBase] = useState(0);
 
   // Chat
   const [mensajesChat, setMensajesChat] = useState([]);
@@ -234,7 +272,8 @@ export default function Dashboard() {
       let objId = 'mantener';
       try {
         const cfg = JSON.parse(localStorage.getItem(`config_${email}`) || '{}');
-        if (cfg.objetivoId) { setObjetivoId(cfg.objetivoId); objId = cfg.objetivoId; }
+        if (cfg.objetivoId)      { setObjetivoId(cfg.objetivoId); objId = cfg.objetivoId; }
+        if (cfg.presupuestoBase) setPresupuestoBase(cfg.presupuestoBase);
         const hoy = new Date().toISOString().split('T')[0];
         const checkin = JSON.parse(localStorage.getItem(`checkin_${email}_${hoy}`) || '{}');
         if (checkin.weather) setWeather(checkin.weather);
@@ -269,19 +308,11 @@ export default function Dashboard() {
     generarMensajeProactivo();
   }, [weather, planDia]);
 
-  // ── AUDITORÍA: email añadido al payload ──────────────────────────
-
   const generarMensajeProactivo = async () => {
     if (!ultimo) return;
     setChatCargando(true);
     setMensajesChat([{ rol: 'bot', texto: '', cargando: true, esProactivo: true }]);
-    const scores = [
-      { nombre: 'actividad física', val: ultimo.efh_score },
-      { nombre: 'composición corporal', val: ultimo.eco_score },
-      { nombre: 'nutrición', val: ultimo.nut_score },
-      { nombre: 'descanso', val: ultimo.des_score },
-      { nombre: 'vitalidad', val: ultimo.vit_score },
-    ];
+    const scores = [{ nombre: 'actividad física', val: ultimo.efh_score }, { nombre: 'composición corporal', val: ultimo.eco_score }, { nombre: 'nutrición', val: ultimo.nut_score }, { nombre: 'descanso', val: ultimo.des_score }, { nombre: 'vitalidad', val: ultimo.vit_score }];
     const peor = scores.reduce((a, b) => a.val < b.val ? a : b);
     const mejor = scores.reduce((a, b) => a.val > b.val ? a : b);
     const comidaHoy = planDia?.comidas ? `Comida: ${planDia.comidas.comida}. Cena: ${planDia.comidas.cena}.` : '';
@@ -290,7 +321,7 @@ export default function Dashboard() {
       const res = await fetch('/api/coach', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,  // ← AUDITORÍA: el coach recibe el email para consultar logs en BD
+          email,
           pregunta: `Genera un mensaje de bienvenida directo (máximo 3 frases + 1 pregunta táctica). Estado de hoy: "${weather?.estado}". Plan: ${comidaHoy} Entreno: ${entrenoHoy}. Bloque débil: ${peor.nombre}. Sé específico.`,
           perfil: { icm: ultimo.icm_total, categoria: ultimo.icm_total >= 65 ? 'Metabolismo activo' : 'Metabolismo moderado', edad_metabolica: ultimo.edad_metabolica, mejor_bloque: mejor.nombre, peor_bloque: peor.nombre, eco: ultimo.eco_score, efh: ultimo.efh_score, nut: ultimo.nut_score, des: ultimo.des_score, vit: ultimo.vit_score },
           contexto_dia: { weather: weather?.estado, comidas: planDia?.comidas, entrenamiento: planDia?.entrenamiento },
@@ -308,39 +339,43 @@ export default function Dashboard() {
     setChatCargando(false);
   };
 
-  const activarProtocoloPanico = async (evento, detalle) => {
-    setMostrarPanico(false);
+  // ── Súper-Botón: reescritura REAL del JSON en Supabase ────────────
+  const activarEvento = async (evento, detalle, diaEvento) => {
+    setMostrarSuperBoton(false);
     setChatAbierto(true);
     setChatCargando(true);
-    setMensajesChat(prev => [...prev, { rol: 'bot', texto: '', cargando: true, esPanico: true }]);
-    const scores = [
-      { nombre: 'actividad física', val: ultimo?.efh_score },
-      { nombre: 'nutrición', val: ultimo?.nut_score },
-      { nombre: 'descanso', val: ultimo?.des_score },
-    ];
-    const peor = scores.reduce((a, b) => (a.val || 0) < (b.val || 0) ? a : b);
+    setMensajesChat(prev => [...prev, { rol: 'bot', texto: '', cargando: true, esEvento: true }]);
+
     try {
-      const res = await fetch('/api/coach', {
+      const res = await fetch('/api/rewrite-plan', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,  // ← AUDITORÍA: el coach recibe el email para consultar logs en BD
-          pregunta: `CONTEXTO DE RESCATE METABÓLICO: El usuario ha registrado el siguiente evento disruptivo: "${evento.label}"${detalle ? ` con el detalle: "${detalle}"` : ''}. Protocolo base: ${evento.protocolo}.
-
-Genera un mensaje de rescate empático y práctico (máximo 4 frases):
-1. Normaliza lo ocurrido sin culpabilizar
-2. Da 2-3 acciones concretas e inmediatas para mitigar el impacto metabólico
-3. Confirma que la racha de hábitos NO se interrumpe
-4. Cierra con motivación real, no genérica
-
-Sé específico, directo y sin dramas.`,
-          perfil: { icm: ultimo?.icm_total, categoria: 'Metabolismo activo', edad_metabolica: ultimo?.edad_metabolica, mejor_bloque: 'actividad física', peor_bloque: peor.nombre, eco: ultimo?.eco_score, efh: ultimo?.efh_score, nut: ultimo?.nut_score, des: ultimo?.des_score, vit: ultimo?.vit_score },
-          contexto_dia: { weather: weather?.estado, comidas: planDia?.comidas, entrenamiento: planDia?.entrenamiento },
+          email,
+          objetivo_id: objetivoId,
+          plan_actual: planSemanal,
+          evento: `${evento.label}${detalle ? ': ' + detalle : ''}`,
+          dia_evento: diaEvento,
+          perfil: { icm: ultimo?.icm_total, objetivo: OBJETIVOS.find(o => o.id === objetivoId)?.nombre },
         }),
       });
       const data = await res.json();
-      setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: data.respuesta || '', cargando: false, esPanico: true } : m));
+
+      if (data.plan) {
+        setPlanSemanal(data.plan);
+        try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: data.plan, fecha: Date.now() })); } catch (e) {}
+        actualizarPlanDia(data.plan);
+
+        const diasTexto = data.dias_modificados?.join(' y ') || 'los días afectados';
+        const msgCoach = data.mensaje_coach
+          ? `${data.mensaje_coach}\n\n✅ He actualizado tu plan para ${diasTexto}. Los cambios ya están guardados.`
+          : `✅ Plan adaptado. He reescrito ${diasTexto} con la estrategia de ${evento.protocolo}. Tu racha sigue intacta.`;
+
+        setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: msgCoach, cargando: false, esEvento: true } : m));
+      } else {
+        throw new Error('Sin plan en respuesta');
+      }
     } catch (e) {
-      setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: `No pasa nada. ${evento.protocolo}. Mañana es un día nuevo.`, cargando: false, esPanico: true } : m));
+      setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: `No pasa nada. Estrategia base: ${evento.protocolo}. Mañana es un día nuevo. 💪`, cargando: false, esEvento: true } : m));
     }
     setChatCargando(false);
   };
@@ -350,7 +385,7 @@ Sé específico, directo y sin dramas.`,
     setCargandoPlan(true);
     const scores = [{ nombre: 'Actividad física', valor: ultimo.efh_score }, { nombre: 'Composición corporal', valor: ultimo.eco_score }, { nombre: 'Nutrición', valor: ultimo.nut_score }, { nombre: 'Descanso', valor: ultimo.des_score }, { nombre: 'Vitalidad', valor: ultimo.vit_score }];
     const mejor = scores.reduce((a, b) => a.valor > b.valor ? a : b);
-    const peor = scores.reduce((a, b) => a.valor < b.valor ? a : b);
+    const peor  = scores.reduce((a, b) => a.valor < b.valor ? a : b);
     let prefTexto = '';
     try {
       const cfg = JSON.parse(localStorage.getItem(`config_${email}`) || '{}');
@@ -358,7 +393,7 @@ Sé específico, directo y sin dramas.`,
       if (cfg.tipoDieta === 'vegetariano') prefTexto += 'SIN carne. ';
       if (cfg.tipoDieta === 'vegano') prefTexto += 'SIN productos animales. ';
       if (cfg.nivelCocina === 'rapido') prefTexto += 'Recetas menos de 20min. ';
-      if (cfg.horarioEntreno) prefTexto += `Horario de entreno preferido: ${cfg.horarioEntreno}. `;
+      if (cfg.horarioEntreno) prefTexto += `Horario entreno: ${cfg.horarioEntreno}. `;
     } catch (e) { console.error(e); }
     const obj = OBJETIVOS.find(o => o.id === objetivoId) || OBJETIVOS[1];
     try {
@@ -392,18 +427,15 @@ Sé específico, directo y sin dramas.`,
       const res = await fetch('/api/coach', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,  // ← AUDITORÍA: el coach recibe el email para consultar logs en BD
-          pregunta: q,
-          historial: historialLimpio,
+          email,
+          pregunta: q, historial: historialLimpio,
           contexto_dia: { weather: weather?.estado, comidas: planDia?.comidas, entrenamiento: planDia?.entrenamiento },
           perfil: { icm: ultimo?.icm_total, categoria: ultimo?.icm_total >= 65 ? 'Metabolismo activo' : 'Metabolismo moderado', edad_metabolica: ultimo?.edad_metabolica, mejor_bloque: 'actividad física', peor_bloque: peor.nombre, eco: ultimo?.eco_score, efh: ultimo?.efh_score, nut: ultimo?.nut_score, des: ultimo?.des_score, vit: ultimo?.vit_score },
         }),
       });
       const data = await res.json();
       setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: data.respuesta || '', cargando: false } : m));
-    } catch {
-      setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: 'Error al conectar.', cargando: false } : m));
-    }
+    } catch { setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto: 'Error al conectar.', cargando: false } : m)); }
     setChatCargando(false);
   };
 
@@ -431,18 +463,23 @@ Sé específico, directo y sin dramas.`,
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: font }}>
-      <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}} @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}} @keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} @keyframes pop{0%{transform:scale(0.8)}50%{transform:scale(1.15)}100%{transform:scale(1)}} details>summary{list-style:none} details>summary::-webkit-details-marker{display:none} .chevron{transition:transform 0.3s ease;display:inline-block} details[open] .chevron{transform:rotate(180deg)}`}</style>
+      <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}} @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}} @keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} @keyframes pop{0%{transform:scale(0.8)}50%{transform:scale(1.15)}100%{transform:scale(1)}} @keyframes borderPulse{0%,100%{box-shadow:0 0 0 0 rgba(230,81,0,0.4)}50%{box-shadow:0 0 0 8px rgba(230,81,0,0)}} details>summary{list-style:none} details>summary::-webkit-details-marker{display:none} .chevron{transition:transform 0.3s ease;display:inline-block} details[open] .chevron{transform:rotate(180deg)}`}</style>
 
       {mostrarConfig && (
         <ConfiguracionMetabolica
           ultimo={ultimo} email={email}
           gastoActividadExtra={gastoActividadExtra}
-          onGuardar={(cfg) => { setObjetivoId(cfg.objetivoId); setPlanSemanal(null); setMostrarConfig(false); }}
+          onGuardar={(cfg) => {
+            setObjetivoId(cfg.objetivoId);
+            if (cfg.presupuestoBase) setPresupuestoBase(cfg.presupuestoBase);
+            setPlanSemanal(null);
+            setMostrarConfig(false);
+          }}
           onCerrar={() => setMostrarConfig(false)}
         />
       )}
       {mostrarSemana && planSemanal && <WeeklyPlannerModal planSemanal={planSemanal} onCerrar={() => setMostrarSemana(false)} email={email} objetivoId={objetivoId} />}
-      {mostrarPanico && <PanicoModal onCerrar={() => setMostrarPanico(false)} onEnviar={activarProtocoloPanico} />}
+      {mostrarSuperBoton && <SuperBotonEventos onCerrar={() => setMostrarSuperBoton(false)} onEnviar={activarEvento} />}
 
       {/* FAB Coach */}
       {datos && ultimo && !chatAbierto && (
@@ -495,7 +532,7 @@ Sé específico, directo y sin dramas.`,
                     🛒 <span>Ver semana</span>
                   </button>
                 )}
-                <button onClick={() => { setDatos(null); setEmail(''); setMensajesChat([]); setMensajeProactivoGenerado(false); setPlanSemanal(null); setStreak(0); setGastoActividadExtra(0); }}
+                <button onClick={() => { setDatos(null); setEmail(''); setMensajesChat([]); setMensajeProactivoGenerado(false); setPlanSemanal(null); setStreak(0); setGastoActividadExtra(0); setKcalConsumidas(0); }}
                   style={{ fontSize: 11, color: '#9A9790', background: 'none', border: 'none', cursor: 'pointer' }}>
                   Cambiar email
                 </button>
@@ -574,7 +611,7 @@ Sé específico, directo y sin dramas.`,
             {/* CHECK-IN */}
             <DailyCheckIn email={email} perfil={ultimo} objetivoId={objetivoId} onWeatherUpdate={(w) => setWeather(w)} completedTasksHoy={completedTasksHoy} />
 
-            {/* TIMELINE */}
+            {/* TIMELINE con presupuesto base y callback kcal */}
             <DailyTimeline
               planSemanal={planSemanal} setPlanSemanal={setPlanSemanal}
               email={email} objetivoId={objetivoId}
@@ -584,14 +621,37 @@ Sé específico, directo y sin dramas.`,
               objetivo={OBJETIVOS.find(o => o.id === objetivoId)}
               onChecksChange={(checks) => setCompletedTasksHoy(checks)}
               onGastoActividadChange={(delta) => setGastoActividadExtra(prev => prev + delta)}
+              presupuestoBase={presupuestoBase}
+              onKcalConsumidas={(kcal) => setKcalConsumidas(kcal)}
             />
 
-            {/* BOTÓN DE PÁNICO */}
-            <button onClick={() => setMostrarPanico(true)} style={{ background: 'none', border: `1.5px solid ${C.light}`, color: C.mid, padding: '10px 16px', borderRadius: 100, fontSize: 12, cursor: 'pointer', fontFamily: font, display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center', transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = C.orange; e.currentTarget.style.color = C.orange; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = C.light; e.currentTarget.style.color = C.mid; }}>
-              <span>⚠️</span>
-              <span>Registrar evento disruptivo (exceso / boda / mal día)</span>
+            {/* ═══ SÚPER-BOTÓN DE EVENTOS ═══ */}
+            <button
+              onClick={() => setMostrarSuperBoton(true)}
+              style={{
+                background: 'linear-gradient(135deg,#E65100,#E8621A)',
+                border: 'none', borderRadius: 16,
+                padding: '18px 20px', cursor: 'pointer', fontFamily: font,
+                width: '100%', textAlign: 'left',
+                boxShadow: '0 4px 20px rgba(230,81,0,0.25)',
+                animation: 'borderPulse 2.5s ease infinite',
+                transition: 'transform 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.01)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: C.white, marginBottom: 4 }}>
+                    🗓️ Tengo un evento — adaptar mi plan
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
+                    ¿Boda, viaje, cena de trabajo o te has saltado el plan?<br />
+                    Pulsa aquí para que lo adaptemos juntos
+                  </div>
+                </div>
+                <div style={{ fontSize: 28, flexShrink: 0, marginLeft: 12 }}>→</div>
+              </div>
             </button>
 
             {/* CTA SUSCRIPCIÓN */}
@@ -610,7 +670,6 @@ Sé específico, directo y sin dramas.`,
                 <span className="chevron" style={{ fontSize: 16, color: C.mid }}>▾</span>
               </summary>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px', background: C.bg }}>
-
                 {datos.length > 1 && (
                   <div style={{ background: C.green, borderRadius: 14, padding: 20 }}>
                     <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Evolución del ICM</div>
@@ -627,7 +686,6 @@ Sé específico, directo y sin dramas.`,
                     </div>
                   </div>
                 )}
-
                 <div style={{ background: C.greenPale, border: '1px solid #C8E8B0', borderRadius: 14, padding: 18 }}>
                   <div style={{ fontSize: 10, color: '#3B6D11', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>🚀 Tu potencial de mejora</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
@@ -652,7 +710,6 @@ Sé específico, directo y sin dramas.`,
                     </div>
                   ))}
                 </div>
-
                 <div style={{ background: C.orangePale, borderRadius: 14, padding: 18, border: '1px solid #F9CFA8' }}>
                   <div style={{ fontSize: 10, color: '#C05010', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>📊 Tu posición vs media</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
@@ -669,7 +726,6 @@ Sé específico, directo y sin dramas.`,
                     ))}
                   </div>
                 </div>
-
                 {datos.length > 1 && (
                   <div style={{ background: C.white, borderRadius: 14, padding: 18, border: `1px solid ${C.light}` }}>
                     <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark, marginBottom: 14 }}>Historial de tests</div>
@@ -687,7 +743,6 @@ Sé específico, directo y sin dramas.`,
                     ))}
                   </div>
                 )}
-
                 {datos.length === 1 && (
                   <div style={{ background: C.greenPale, border: `1px solid #C8E8B0`, borderRadius: 14, padding: 20, textAlign: 'center' }}>
                     <div style={{ fontSize: 22, marginBottom: 8 }}>📅</div>
@@ -696,7 +751,6 @@ Sé específico, directo y sin dramas.`,
                     <a href="/bot" style={{ display: 'inline-block', background: C.green, color: C.white, padding: '10px 22px', borderRadius: 100, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Hacer nuevo test</a>
                   </div>
                 )}
-
               </div>
             </details>
 

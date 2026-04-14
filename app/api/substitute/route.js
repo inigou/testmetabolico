@@ -2,7 +2,6 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// MET aproximados por actividad (kcal/kg/h)
 const METS = {
   pesas: 6.0, hiit: 8.5, cardio: 5.5, running: 7.0, natacion: 7.0,
   yoga: 3.0, surf: 5.5, caminar: 3.5, senderismo: 5.5, padel: 4.5,
@@ -12,9 +11,8 @@ const METS = {
 function detectarMET(texto) {
   const t = texto.toLowerCase();
   for (const [key, val] of Object.entries(METS)) { if (t.includes(key)) return val; }
-  return 5.5; // fallback moderado
+  return 5.5;
 }
-
 function extraerDuracion(texto) {
   const match = texto.match(/(\d+)\s*(min|minuto|hora|h)/i);
   if (!match) return 45;
@@ -24,54 +22,102 @@ function extraerDuracion(texto) {
 
 export async function POST(request) {
   try {
-    const { comida_actual, peticion, tipo, objetivo, peso_usuario = 75 } = await request.json();
-    if (!comida_actual || !peticion) return Response.json({ error: 'Faltan datos' }, { status: 400 });
+    const { comida_actual, peticion, tipo, objetivo, peso_usuario = 75, kcal_actual } = await request.json();
+    if (!comida_actual) return Response.json({ error: 'Faltan datos' }, { status: 400 });
 
-    const esEjercicio = tipo === 'entreno';
+    const esEjercicio  = tipo === 'entreno';
+    const esQuickAdd   = tipo === 'quick_add';
 
-    const systemPrompt = esEjercicio
-      ? `Eres un especialista en fisiología del ejercicio. El usuario quiere cambiar su actividad física de hoy.
+    // ── MODO QUICK ADD: traducir texto libre a kcal ──────────────────
+    if (esQuickAdd) {
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: `Analiza este texto y devuelve SOLO JSON sin markdown:
+{"kcal": número, "tipo": "ingesta" o "gasto", "descripcion": "descripción concisa", "delta_kcal": número positivo si ingesta, negativo si gasto}
+
+Texto: "${comida_actual}"
+
 Reglas:
-- Devuelve SOLO un JSON válido sin markdown: {"sustitucion":"texto de la nueva actividad","delta_kcal":número,"mensaje_coach":"frase de 1 línea sugerida al coach"}
-- sustitucion: describe la nueva actividad con duración (ej: "Surf libre 90 min — intensidad moderada")
-- delta_kcal: diferencia calórica respecto a la actividad original. Positivo si quema más, negativo si quema menos. Puede ser 0.
-- mensaje_coach: sugerencia táctica breve (ej: "He añadido snack post-surf de 30g proteína"). Máx 15 palabras.
-- Objetivo del usuario: ${objetivo}`
-      : `Eres un nutricionista que hace sustituciones de ingredientes.
-Reglas:
-- Devuelve SOLO un JSON válido sin markdown: {"sustitucion":"texto de la comida adaptada","delta_kcal":0,"mensaje_coach":""}
-- Mantén el mismo aporte calórico aproximado
-- Usa ingredientes comunes con gramos exactos
-- Objetivo del usuario: ${objetivo}`;
+- ingesta = comida/bebida que el usuario ha consumido (kcal positivas, impacta consumido)
+- gasto = actividad física extra (kcal negativas, impacta presupuesto)
+- Estima calorías con precisión razonable
+- descripcion: máximo 8 palabras`,
+        }],
+      });
+      let texto = message.content[0].text.trim()
+        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+      const r = JSON.parse(texto);
+      return Response.json({
+        sustitucion: r.descripcion,
+        delta_kcal: r.delta_kcal || (r.tipo === 'ingesta' ? r.kcal : -r.kcal),
+        kcal_nuevas: r.kcal,
+        tipo_quick_add: r.tipo,
+        mensaje_coach: '',
+      });
+    }
 
-    const userPrompt = esEjercicio
-      ? `Actividad actual: ${comida_actual}\nPetición del usuario: ${peticion}\n\nDevuelve SOLO el JSON.`
-      : `Comida actual (${tipo}): ${comida_actual}\nPetición: ${peticion}\n\nDevuelve SOLO el JSON.`;
+    // ── MODO EJERCICIO ───────────────────────────────────────────────
+    if (esEjercicio) {
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `Eres especialista en fisiología del ejercicio. El usuario cambia su actividad.
+Devuelve SOLO JSON sin markdown:
+{"sustitucion":"descripción actividad nueva con duración","kcal_nuevas":número,"delta_kcal":número,"mensaje_coach":"frase 1 línea max 15 palabras"}
 
+Actividad actual: ${comida_actual} (${kcal_actual || 0} kcal)
+Nueva petición: ${peticion}
+Peso usuario: ${peso_usuario}kg
+Objetivo: ${objetivo}
+
+kcal_nuevas = kcal que quemará con la nueva actividad
+delta_kcal = kcal_nuevas - kcal_actuales (positivo si quema más, negativo si quema menos)`,
+        }],
+      });
+      let texto = message.content[0].text.trim()
+        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+      let result = JSON.parse(texto);
+
+      // Fallback cálculo manual
+      if (result.delta_kcal === undefined || result.kcal_nuevas === undefined) {
+        const metOrig  = detectarMET(comida_actual);
+        const metNuevo = detectarMET(result.sustitucion || peticion);
+        const durOrig  = extraerDuracion(comida_actual);
+        const durNueva = extraerDuracion(result.sustitucion || peticion);
+        const kcalOrig  = kcal_actual || Math.round(metOrig  * peso_usuario * (durOrig  / 60));
+        const kcalNueva = Math.round(metNuevo * peso_usuario * (durNueva / 60));
+        result.kcal_nuevas = kcalNueva;
+        result.delta_kcal  = kcalNueva - kcalOrig;
+      }
+      return Response.json(result);
+    }
+
+    // ── MODO COMIDA ──────────────────────────────────────────────────
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
+      messages: [{
+        role: 'user',
+        content: `Eres nutricionista. El usuario adapta una comida.
+Devuelve SOLO JSON sin markdown:
+{"sustitucion":"descripción nueva comida con gramos","kcal_nuevas":número,"delta_kcal":número,"mensaje_coach":""}
 
+Comida actual (${tipo}): ${comida_actual} (${kcal_actual || 0} kcal aprox)
+Petición: ${peticion}
+Objetivo: ${objetivo}
+
+kcal_nuevas = calorías de la nueva comida
+delta_kcal  = kcal_nuevas - kcal_actuales`,
+      }],
+    });
     let texto = message.content[0].text.trim()
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-
-    let result = JSON.parse(texto);
-
-    // Fallback: calcular delta calórico si la IA no lo incluyó correctamente
-    if (esEjercicio && (result.delta_kcal === undefined || result.delta_kcal === null)) {
-      const metOriginal = detectarMET(comida_actual);
-      const metNuevo    = detectarMET(result.sustitucion || peticion);
-      const durOriginal = extraerDuracion(comida_actual);
-      const durNueva    = extraerDuracion(result.sustitucion || peticion);
-      const kcalOriginal = Math.round(metOriginal * peso_usuario * (durOriginal / 60));
-      const kcalNueva    = Math.round(metNuevo    * peso_usuario * (durNueva    / 60));
-      result.delta_kcal = kcalNueva - kcalOriginal;
-    }
-
-    return Response.json(result);
+    return Response.json(JSON.parse(texto));
 
   } catch (error) {
     console.error('Substitute API error:', error);
