@@ -5,10 +5,58 @@ import ConfiguracionMetabolica from './ConfiguracionMetabolica';
 import DailyCheckIn from './DailyCheckIn';
 import WeeklyPlannerModal from './WeeklyPlannerModal';
 
+// ── Helpers Supabase inline (sin depender de lib/supabase) ──────────
+const SB_URL = 'https://khinwyoejhoqqunfyjft.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoaW53eW9lamhvcXF1bmZ5amZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjgxMzksImV4cCI6MjA5MDc0NDEzOX0.CE8EzbHQLdKN9Ag0nZVGS3gHPOc4NK464RyLtrP_nYM';
+const sbHeaders = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
+
+async function cargarPlanDB(email, objetivoId) {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/user_plans?email=eq.${encodeURIComponent(email)}&objetivo_id=eq.${encodeURIComponent(objetivoId)}&select=plan_json,updated_at`, { headers: sbHeaders });
+    const rows = await res.json();
+    if (rows?.length > 0) return rows[0].plan_json;
+    return null;
+  } catch (e) { console.error(e); return null; }
+}
+
+async function guardarPlanDB(email, objetivoId, plan) {
+  try {
+    await fetch(`${SB_URL}/rest/v1/user_plans`, {
+      method: 'POST',
+      headers: { ...sbHeaders, Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({ email, objetivo_id: objetivoId, plan_json: plan, updated_at: new Date().toISOString() }),
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function cargarLogsRecientes(email, dias = 35) {
+  try {
+    const desde = new Date();
+    desde.setDate(desde.getDate() - dias);
+    const desdeStr = desde.toISOString().split('T')[0];
+    const res = await fetch(`${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=gte.${desdeStr}&order=fecha.asc&select=fecha,energia,sueno,estres`, { headers: sbHeaders });
+    return await res.json();
+  } catch (e) { return []; }
+}
+
+function calcularRacha(logs) {
+  if (!logs?.length) return 0;
+  const fechasSet = new Set(logs.map(l => l.fecha));
+  let racha = 0;
+  for (let i = 0; i < 60; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    if (fechasSet.has(key)) racha++;
+    else if (i > 0) break;
+  }
+  return racha;
+}
+
 // ── ChatPanel fuera del Dashboard para evitar bug de pérdida de foco ──
 function ChatPanel({ mensajesChat, inputChat, setInputChat, chatCargando, enviarMensaje, onCerrar, chatEndRef }) {
   const font = 'Trebuchet MS, Verdana, sans-serif';
-  const C = { green:'#5B9B3C', orange:'#E8621A', white:'#FFFFFF', dark:'#1A1A1A', mid:'#6B6B6B', light:'#E8E4DC', bg:'#F7F4EE', greenPale:'#EBF5E4' };
+  const C = { green:'#5B9B3C', orange:'#E8621A', white:'#FFFFFF', dark:'#1A1A1A', mid:'#6B6B6B', light:'#E8E4DC', bg:'#F7F4EE' };
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       <div style={{ background:C.green, padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
@@ -76,6 +124,7 @@ function ChatPanel({ mensajesChat, inputChat, setInputChat, chatCargando, enviar
   );
 }
 
+// ── Constantes globales ─────────────────────────────────────────────
 const C = {
   bg: '#F7F4EE', green: '#5B9B3C', orange: '#E8621A', white: '#FFFFFF',
   dark: '#1A1A1A', mid: '#6B6B6B', light: '#E8E4DC', greenLight: '#EAF3DE',
@@ -95,51 +144,11 @@ const OBJETIVOS = [
 
 const getDiaHoy = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
 
-// ── SISTEMA DE COLOR SEMÁNTICO ─────────────────────────────────────
-// ICM: 0-100
-const icmColor = (v) => {
-  if (v >= 80) return '#2E7D32'; // verde oscuro — excelente
-  if (v >= 65) return '#5B9B3C'; // verde — bueno
-  if (v >= 50) return '#F9A825'; // amarillo — mediocre
-  if (v >= 35) return '#E8621A'; // naranja — malo
-  return '#C62828';              // rojo — muy malo
-};
-
-// Etiqueta ICM
-const icmLabel = (v) => {
-  if (v >= 80) return 'Metabolismo óptimo';
-  if (v >= 65) return 'Metabolismo activo';
-  if (v >= 50) return 'Metabolismo moderado';
-  if (v >= 35) return 'Metabolismo lento';
-  return 'Metabolismo crítico';
-};
-
-// Scores de bloques: 0-100
-const scoreColor = (v) => {
-  if (v >= 80) return '#2E7D32';
-  if (v >= 65) return '#5B9B3C';
-  if (v >= 50) return '#F9A825';
-  if (v >= 35) return '#E8621A';
-  return '#C62828';
-};
-
-// Fondo claro para badges de score
-const scoreBg = (v) => {
-  if (v >= 80) return '#E8F5E9';
-  if (v >= 65) return '#EBF5E4';
-  if (v >= 50) return '#FFFDE7';
-  if (v >= 35) return '#FDF0E8';
-  return '#FFEBEE';
-};
-
-// Gradiente para barra ICM (siempre va del mismo color sólido)
-const icmBarColor = (v) => {
-  if (v >= 80) return 'linear-gradient(90deg, #2E7D32, #5B9B3C)';
-  if (v >= 65) return 'linear-gradient(90deg, #5B9B3C, #7AB648)';
-  if (v >= 50) return 'linear-gradient(90deg, #F9A825, #FBC02D)';
-  if (v >= 35) return 'linear-gradient(90deg, #E8621A, #F57C00)';
-  return 'linear-gradient(90deg, #C62828, #E53935)';
-};
+const icmColor = (v) => { if (v >= 80) return '#2E7D32'; if (v >= 65) return '#5B9B3C'; if (v >= 50) return '#F9A825'; if (v >= 35) return '#E8621A'; return '#C62828'; };
+const icmLabel = (v) => { if (v >= 80) return 'Metabolismo óptimo'; if (v >= 65) return 'Metabolismo activo'; if (v >= 50) return 'Metabolismo moderado'; if (v >= 35) return 'Metabolismo lento'; return 'Metabolismo crítico'; };
+const scoreColor = (v) => { if (v >= 80) return '#2E7D32'; if (v >= 65) return '#5B9B3C'; if (v >= 50) return '#F9A825'; if (v >= 35) return '#E8621A'; return '#C62828'; };
+const scoreBg = (v) => { if (v >= 80) return '#E8F5E9'; if (v >= 65) return '#EBF5E4'; if (v >= 50) return '#FFFDE7'; if (v >= 35) return '#FDF0E8'; return '#FFEBEE'; };
+const icmBarColor = (v) => { if (v >= 80) return 'linear-gradient(90deg,#2E7D32,#5B9B3C)'; if (v >= 65) return 'linear-gradient(90deg,#5B9B3C,#7AB648)'; if (v >= 50) return 'linear-gradient(90deg,#F9A825,#FBC02D)'; if (v >= 35) return 'linear-gradient(90deg,#E8621A,#F57C00)'; return 'linear-gradient(90deg,#C62828,#E53935)'; };
 
 export default function Dashboard() {
   const [email, setEmail] = useState('');
@@ -153,6 +162,8 @@ export default function Dashboard() {
   const [cargandoPlan, setCargandoPlan] = useState(false);
   const [planDia, setPlanDia] = useState(null);
   const [mostrarSemana, setMostrarSemana] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [completedTasksHoy, setCompletedTasksHoy] = useState({});
 
   // Chat
   const [mensajesChat, setMensajesChat] = useState([]);
@@ -164,37 +175,55 @@ export default function Dashboard() {
 
   const ultimo = datos?.[datos.length - 1];
 
-  // Scroll chat solo cuando llega respuesta
+  // Scroll chat
   useEffect(() => {
     if (!chatEndRef.current || mensajesChat.length === 0) return;
     const m = mensajesChat[mensajesChat.length - 1];
     if (!m?.cargando) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [mensajesChat]);
 
-  // Cargar config y estado guardado
+  // ── CARGA INICIAL — config + plan cross-device + streak ──────────
   useEffect(() => {
     if (!datos || !email) return;
-    try {
-      const cfg = JSON.parse(localStorage.getItem(`config_${email}`) || '{}');
-      if (cfg.objetivoId) setObjetivoId(cfg.objetivoId);
-      const hoy = new Date().toISOString().split('T')[0];
-      const checkin = JSON.parse(localStorage.getItem(`checkin_${email}_${hoy}`) || '{}');
-      if (checkin.weather) setWeather(checkin.weather);
-    } catch (e) { console.error(e); }
 
-    // Cargar plan guardado
-    try {
-      const objId = JSON.parse(localStorage.getItem(`config_${email}`) || '{}').objetivoId || 'mantener';
-      const guardado = localStorage.getItem(`plan_${email}_${objId}`);
-      if (guardado) {
-        const { plan, fecha } = JSON.parse(guardado);
-        const diasDesde = Math.floor((Date.now() - fecha) / (1000 * 60 * 60 * 24));
-        if (diasDesde < 7) {
-          setPlanSemanal(plan);
-          actualizarPlanDia(plan);
+    const init = async () => {
+      // 1. Config y weather local
+      let objId = 'mantener';
+      try {
+        const cfg = JSON.parse(localStorage.getItem(`config_${email}`) || '{}');
+        if (cfg.objetivoId) { setObjetivoId(cfg.objetivoId); objId = cfg.objetivoId; }
+        const hoy = new Date().toISOString().split('T')[0];
+        const checkin = JSON.parse(localStorage.getItem(`checkin_${email}_${hoy}`) || '{}');
+        if (checkin.weather) setWeather(checkin.weather);
+      } catch (e) { console.error(e); }
+
+      // 2. Plan — primero Supabase (cross-device), fallback localStorage
+      try {
+        const planDB = await cargarPlanDB(email, objId);
+        if (planDB) {
+          setPlanSemanal(planDB);
+          actualizarPlanDia(planDB);
+          // Sincronizar en localStorage
+          try { localStorage.setItem(`plan_${email}_${objId}`, JSON.stringify({ plan: planDB, fecha: Date.now() })); } catch (e) {}
+        } else {
+          // Fallback localStorage
+          const guardado = localStorage.getItem(`plan_${email}_${objId}`);
+          if (guardado) {
+            const { plan, fecha } = JSON.parse(guardado);
+            const diasDesde = Math.floor((Date.now() - fecha) / (1000 * 60 * 60 * 24));
+            if (diasDesde < 7) { setPlanSemanal(plan); actualizarPlanDia(plan); }
+          }
         }
-      }
-    } catch (e) { console.error(e); }
+      } catch (e) { console.error(e); }
+
+      // 3. Streak desde daily_logs
+      try {
+        const logs = await cargarLogsRecientes(email, 35);
+        setStreak(calcularRacha(logs));
+      } catch (e) { console.error(e); }
+    };
+
+    init();
   }, [datos, email]);
 
   const actualizarPlanDia = (plan) => {
@@ -202,15 +231,14 @@ export default function Dashboard() {
     const diaData = plan?.dieta?.[diaHoy];
     const entreno = plan?.ejercicios?.[diaHoy];
     if (diaData || entreno) {
-      const pd = {
+      setPlanDia({
         comidas: diaData ? { desayuno: diaData.desayuno, comida: diaData.comida, cena: diaData.cena, snack: diaData.snack } : null,
         entrenamiento: entreno ? { tipo: entreno.tipo, ejercicios: entreno.ejercicios } : null,
-      };
-      setPlanDia(pd);
+      });
     }
   };
 
-  // Mensaje proactivo cuando hay weather + planDia
+  // Mensaje proactivo
   useEffect(() => {
     if (!weather || !planDia || mensajeProactivoGenerado || !ultimo) return;
     setMensajeProactivoGenerado(true);
@@ -303,7 +331,10 @@ export default function Dashboard() {
       const data = await res.json();
       if (data.plan) {
         setPlanSemanal(data.plan);
-        localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: data.plan, fecha: Date.now() }));
+        // ── Guardar cross-device en Supabase ──
+        await guardarPlanDB(email, objetivoId, data.plan);
+        // Fallback localStorage
+        try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: data.plan, fecha: Date.now() })); } catch (e) {}
         actualizarPlanDia(data.plan);
       }
     } catch (e) { console.error(e); }
@@ -362,20 +393,13 @@ export default function Dashboard() {
     if (!email.trim()) return;
     setCargando(true); setError(null);
     try {
-      const res = await fetch(`https://khinwyoejhoqqunfyjft.supabase.co/rest/v1/tests?email=eq.${encodeURIComponent(email)}&order=fecha.asc`, {
-        headers: {
-          apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoaW53eW9lamhvcXF1bmZ5amZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjgxMzksImV4cCI6MjA5MDc0NDEzOX0.CE8EzbHQLdKN9Ag0nZVGS3gHPOc4NK464RyLtrP_nYM',
-          Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoaW53eW9lamhvcXF1bmZ5amZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjgxMzksImV4cCI6MjA5MDc0NDEzOX0.CE8EzbHQLdKN9Ag0nZVGS3gHPOc4NK464RyLtrP_nYM',
-        },
-      });
+      const res = await fetch(`${SB_URL}/rest/v1/tests?email=eq.${encodeURIComponent(email)}&order=fecha.asc`, { headers: sbHeaders });
       const tests = await res.json();
       if (tests.length === 0) setError('No encontramos ningún test con ese email.');
       else setDatos(tests);
     } catch { setError('Error al conectar.'); }
     finally { setCargando(false); }
   };
-
-  // ── CHAT PANEL (definido fuera del componente, se pasa por props) ──
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: font }}>
@@ -393,56 +417,29 @@ export default function Dashboard() {
       {mostrarConfig && (
         <ConfiguracionMetabolica
           ultimo={ultimo} email={email}
-          onGuardar={(cfg) => {
-            setObjetivoId(cfg.objetivoId);
-            setPlanSemanal(null);
-            setMostrarConfig(false);
-          }}
+          onGuardar={(cfg) => { setObjetivoId(cfg.objetivoId); setPlanSemanal(null); setMostrarConfig(false); }}
           onCerrar={() => setMostrarConfig(false)}
         />
       )}
 
-      {/* Modal semana + compra */}
       {mostrarSemana && planSemanal && (
-        <WeeklyPlannerModal
-          planSemanal={planSemanal}
-          onCerrar={() => setMostrarSemana(false)}
-          email={email}
-          objetivoId={objetivoId}
-        />
+        <WeeklyPlannerModal planSemanal={planSemanal} onCerrar={() => setMostrarSemana(false)} email={email} objetivoId={objetivoId} />
       )}
 
       {/* FAB Coach */}
       {datos && ultimo && !chatAbierto && (
-        <button onClick={() => setChatAbierto(true)} style={{
-          position: 'fixed', bottom: 24, right: 20, zIndex: 300,
-          width: 58, height: 58, borderRadius: '50%',
-          background: C.green, border: 'none',
-          boxShadow: '0 4px 20px rgba(91,155,60,0.45)',
-          cursor: 'pointer', fontSize: 24,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+        <button onClick={() => setChatAbierto(true)} style={{ position:'fixed', bottom:24, right:20, zIndex:300, width:58, height:58, borderRadius:'50%', background:C.green, border:'none', boxShadow:'0 4px 20px rgba(91,155,60,0.45)', cursor:'pointer', fontSize:24, display:'flex', alignItems:'center', justifyContent:'center' }}>
           🤖
-          {mensajesChat.length > 0 && (
-            <div style={{ position: 'absolute', top: 2, right: 2, width: 14, height: 14, borderRadius: '50%', background: C.orange, border: `2px solid ${C.white}` }} />
-          )}
+          {mensajesChat.length > 0 && <div style={{ position:'absolute', top:2, right:2, width:14, height:14, borderRadius:'50%', background:C.orange, border:`2px solid ${C.white}` }} />}
         </button>
       )}
 
       {/* Modal chat */}
       {chatAbierto && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-          <div onClick={() => setChatAbierto(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', animation: 'fadeIn 0.2s ease' }} />
-          <div style={{ position: 'relative', zIndex: 1, height: '85dvh', borderRadius: '20px 20px 0 0', background: C.white, overflow: 'hidden', animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', maxWidth: 720, width: '100%', margin: '0 auto' }}>
-            <ChatPanel
-              mensajesChat={mensajesChat}
-              inputChat={inputChat}
-              setInputChat={setInputChat}
-              chatCargando={chatCargando}
-              enviarMensaje={enviarMensaje}
-              onCerrar={() => setChatAbierto(false)}
-              chatEndRef={chatEndRef}
-            />
+        <div style={{ position:'fixed', inset:0, zIndex:400, display:'flex', flexDirection:'column', justifyContent:'flex-end' }}>
+          <div onClick={() => setChatAbierto(false)} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', animation:'fadeIn 0.2s ease' }} />
+          <div style={{ position:'relative', zIndex:1, height:'85dvh', borderRadius:'20px 20px 0 0', background:C.white, overflow:'hidden', animation:'slideUp 0.3s ease', display:'flex', flexDirection:'column', maxWidth:720, width:'100%', margin:'0 auto' }}>
+            <ChatPanel mensajesChat={mensajesChat} inputChat={inputChat} setInputChat={setInputChat} chatCargando={chatCargando} enviarMensaje={enviarMensaje} onCerrar={() => setChatAbierto(false)} chatEndRef={chatEndRef} />
           </div>
         </div>
       )}
@@ -450,7 +447,10 @@ export default function Dashboard() {
       {/* NAV */}
       <nav style={{ background: C.green, padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontWeight: 900, fontSize: 18, color: C.white }}>🌿 my<span style={{ color: C.greenLight }}>metaboliq</span></span>
-        <a href="/" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, textDecoration: 'none' }}>Nuevo test</a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <a href="/evolucion" style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, textDecoration: 'none', fontWeight: 600 }}>📈 Mi evolución</a>
+          <a href="/" style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, textDecoration: 'none' }}>Nuevo test</a>
+        </div>
       </nav>
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '28px 20px 100px' }}>
@@ -462,9 +462,7 @@ export default function Dashboard() {
             <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: C.dark, marginBottom: 8 }}>
               Tu evolución <span style={{ color: C.orange, fontStyle: 'italic' }}>metabólica</span>
             </h1>
-            <p style={{ fontSize: 14, color: C.mid, marginBottom: 32, lineHeight: 1.7 }}>
-              Introduce el email con el que hiciste el test.
-            </p>
+            <p style={{ fontSize: 14, color: C.mid, marginBottom: 32, lineHeight: 1.7 }}>Introduce el email con el que hiciste el test.</p>
             <div style={{ display: 'flex', gap: 8, maxWidth: 380, margin: '0 auto' }}>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && buscarDatos()} placeholder="tu@email.com"
@@ -485,14 +483,11 @@ export default function Dashboard() {
               <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: C.dark }}>Mi dashboard</h2>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {planSemanal && (
-                  <button
-                    onClick={() => setMostrarSemana(true)}
-                    style={{ background: C.white, border: `1.5px solid ${C.green}`, color: C.green, padding: '8px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font, display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
+                  <button onClick={() => setMostrarSemana(true)} style={{ background: C.white, border: `1.5px solid ${C.green}`, color: C.green, padding: '8px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font, display: 'flex', alignItems: 'center', gap: 6 }}>
                     🛒 <span>Ver semana</span>
                   </button>
                 )}
-                <button onClick={() => { setDatos(null); setEmail(''); setMensajesChat([]); setMensajeProactivoGenerado(false); setPlanSemanal(null); }}
+                <button onClick={() => { setDatos(null); setEmail(''); setMensajesChat([]); setMensajeProactivoGenerado(false); setPlanSemanal(null); setStreak(0); }}
                   style={{ fontSize: 11, color: '#9A9790', background: 'none', border: 'none', cursor: 'pointer' }}>
                   Cambiar email
                 </button>
@@ -522,9 +517,7 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <div>
                     <div style={{ fontSize: 9, color: '#9A9790', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>ICM · Índice de Calidad Metabólica</div>
-                    <div style={{ fontSize: 11, color: icmColor(ultimo.icm_total), fontWeight: 700 }}>
-                      {icmLabel(ultimo.icm_total)}
-                    </div>
+                    <div style={{ fontSize: 11, color: icmColor(ultimo.icm_total), fontWeight: 700 }}>{icmLabel(ultimo.icm_total)}</div>
                   </div>
                   <div style={{ fontFamily: 'Georgia, serif', fontSize: 36, color: icmColor(ultimo.icm_total), lineHeight: 1 }}>
                     {ultimo.icm_total}<span style={{ fontSize: 13, color: '#9A9790' }}>/100</span>
@@ -546,13 +539,8 @@ export default function Dashboard() {
                   const vals = [ultimo.efh_score, ultimo.eco_score, ultimo.nut_score, ultimo.vit_score, ultimo.des_score];
                   const isBest = s.val === Math.max(...vals);
                   const isWorst = s.val === Math.min(...vals);
-                  const bgCard = isBest
-                    ? scoreColor(s.val)
-                    : isWorst
-                    ? 'rgba(0,0,0,0.18)'
-                    : 'rgba(255,255,255,0.15)';
                   return (
-                    <div key={i} style={{ background: bgCard, borderRadius: 9, padding: '9px 5px', textAlign: 'center' }}>
+                    <div key={i} style={{ background: isBest ? scoreColor(s.val) : isWorst ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.15)', borderRadius: 9, padding: '9px 5px', textAlign: 'center' }}>
                       <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.9)', fontWeight: 700, marginBottom: 2 }}>{isBest ? '★ TOP' : isWorst ? '↑ MEJORAR' : '\u00a0'}</div>
                       <div style={{ fontSize: 14, marginBottom: 3 }}>{s.icon}</div>
                       <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>{s.label}</div>
@@ -563,8 +551,44 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* ═══ 1b: STREAK + POTENCIAL ═══ */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* Racha */}
+              <div style={{ background: streak >= 7 ? C.green : streak >= 3 ? C.orangePale : C.white, borderRadius: 16, padding: '16px', border: `1px solid ${streak >= 7 ? C.green : C.light}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ fontSize: 32 }}>{streak >= 7 ? '🔥' : streak >= 3 ? '⚡' : '💤'}</div>
+                <div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: streak >= 7 ? C.white : streak >= 3 ? C.orange : C.mid, lineHeight: 1 }}>{streak}</div>
+                  <div style={{ fontSize: 10, color: streak >= 7 ? 'rgba(255,255,255,0.8)' : C.mid, fontWeight: 600, marginTop: 2 }}>días de racha</div>
+                  <div style={{ fontSize: 9, color: streak >= 7 ? 'rgba(255,255,255,0.65)' : '#C0B8B0', marginTop: 1 }}>
+                    {streak === 0 ? 'Empieza hoy' : streak >= 7 ? '¡Racha semanal!' : `${7 - streak} para racha semanal`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Potencial ICM */}
+              <div style={{ background: C.greenPale, borderRadius: 16, padding: '16px', border: '1px solid #C8E8B0' }}>
+                <div style={{ fontSize: 10, color: '#3B6D11', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🚀 Tu potencial</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                  <span style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: icmColor(ultimo.icm_total) }}>{ultimo.icm_total}</span>
+                  <span style={{ fontSize: 11, color: C.mid }}>→</span>
+                  <span style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: '#2E7D32' }}>{Math.min(100, Math.round(ultimo.icm_total * 1.18))}</span>
+                </div>
+                <div style={{ height: 6, background: '#D4EDBE', borderRadius: 100, overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ height: '100%', width: `${ultimo.icm_total}%`, background: icmColor(ultimo.icm_total), borderRadius: 100 }} />
+                  <div style={{ position: 'absolute', top: 0, left: `${ultimo.icm_total}%`, height: '100%', width: `${Math.min(100, Math.round(ultimo.icm_total * 1.18)) - ultimo.icm_total}%`, background: '#5B9B3C66', borderRadius: '0 100px 100px 0' }} />
+                </div>
+                <div style={{ fontSize: 9, color: '#3B6D11', marginTop: 5 }}>mejorando 2 bloques</div>
+              </div>
+            </div>
+
             {/* ═══ 2: CHECK-IN ═══ */}
-            <DailyCheckIn email={email} perfil={ultimo} objetivoId={objetivoId} onWeatherUpdate={(w) => setWeather(w)} />
+            <DailyCheckIn
+              email={email}
+              perfil={ultimo}
+              objetivoId={objetivoId}
+              onWeatherUpdate={(w) => setWeather(w)}
+              completedTasksHoy={completedTasksHoy}
+            />
 
             {/* ═══ 3: TIMELINE HOY ═══ */}
             <DailyTimeline
@@ -577,6 +601,7 @@ export default function Dashboard() {
               onGenerarPlan={generarPlan}
               cargandoPlan={cargandoPlan}
               objetivo={OBJETIVOS.find(o => o.id === objetivoId)}
+              onChecksChange={(checks) => setCompletedTasksHoy(checks)}
             />
 
             {/* ═══ 4: CTA SUSCRIPCIÓN ═══ */}
@@ -585,9 +610,7 @@ export default function Dashboard() {
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: 15, color: C.white, marginBottom: 3 }}>Seguimiento mensual</div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>9,90€/mes · Cancela cuando quieras</div>
               </div>
-              <a href="#" style={{ background: C.white, color: C.orange, padding: '9px 20px', borderRadius: 100, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                Activar →
-              </a>
+              <a href="#" style={{ background: C.white, color: C.orange, padding: '9px 20px', borderRadius: 100, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Activar →</a>
             </div>
 
             {/* ═══ 5: ANALÍTICA COLAPSADA ═══ */}
@@ -631,7 +654,7 @@ export default function Dashboard() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
                     <div style={{ background: C.white, borderRadius: 9, padding: 12, textAlign: 'center', border: '1px solid #C8E8B0' }}>
                       <div style={{ fontSize: 9, color: '#9A9790', marginBottom: 4 }}>ICM actual</div>
-                      <div style={{ fontFamily: 'Georgia, serif', fontSize: 30, color: C.orange }}>{ultimo.icm_total}</div>
+                      <div style={{ fontFamily: 'Georgia, serif', fontSize: 30, color: icmColor(ultimo.icm_total) }}>{ultimo.icm_total}</div>
                     </div>
                     <div style={{ background: C.green, borderRadius: 9, padding: 12, textAlign: 'center' }}>
                       <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>ICM potencial</div>
