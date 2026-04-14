@@ -8,38 +8,47 @@ const C = {
   greenPale: '#EBF5E4', orangePale: '#FDF0E8',
 };
 const font = 'Trebuchet MS, Verdana, sans-serif';
-const DIAS_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const getDiaHoy = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
 const getHora = () => new Date().getHours();
-const getEventoActivo = () => { const h = getHora(); if (h<10) return 'desayuno'; if (h<14) return 'entreno'; if (h<16) return 'comida'; return 'cena'; };
+const getEventoActivo = () => { const h = getHora(); if (h < 10) return 'desayuno'; if (h < 14) return 'entreno'; if (h < 16) return 'comida'; return 'cena'; };
 const fechaStr = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().split('T')[0]; };
-const diaDeStr = (str) => { const d = new Date(str+'T12:00:00'); return d.getDay() === 0 ? 6 : d.getDay() - 1; };
+const diaDeStr = (str) => { const d = new Date(str + 'T12:00:00'); return d.getDay() === 0 ? 6 : d.getDay() - 1; };
 
-function SubstituteInput({ onEnviar, onCancelar, cargando }) {
+// ── Input de sustitución aislado para evitar pérdida de foco ──────
+function SubstituteInput({ onEnviar, onCancelar, cargando, placeholder }) {
   const [val, setVal] = useState('');
   return (
     <div style={{ marginTop: 10, padding: '10px 12px', background: C.white, borderRadius: 10, border: `1px solid ${C.orange}`, animation: 'fadeIn 0.15s ease' }}>
-      <div style={{ fontSize: 10, color: C.orange, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🔄 ¿Qué quieres cambiar?</div>
+      <div style={{ fontSize: 10, color: C.orange, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        🔄 ¿Qué quieres cambiar?
+      </div>
       <div style={{ display: 'flex', gap: 6 }}>
-        <input autoFocus value={val} onChange={e => setVal(e.target.value)}
-          onKeyDown={e => { if (e.key==='Enter' && val.trim()) onEnviar(val); if (e.key==='Escape') onCancelar(); }}
-          placeholder="Ej: No tengo arándanos, tengo plátano..."
-          style={{ flex:1, padding:'8px 12px', border:`1.5px solid ${C.light}`, borderRadius:100, fontSize:12, fontFamily:font, outline:'none', color:C.dark, background:C.bg }} />
+        <input
+          autoFocus value={val} onChange={e => setVal(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && val.trim()) onEnviar(val); if (e.key === 'Escape') onCancelar(); }}
+          placeholder={placeholder || 'Ej: No tengo arándanos, tengo plátano...'}
+          style={{ flex: 1, padding: '8px 12px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 12, fontFamily: font, outline: 'none', color: C.dark, background: C.bg }}
+        />
         <button onClick={() => val.trim() && onEnviar(val)} disabled={cargando || !val.trim()}
-          style={{ background:cargando ? C.light : C.orange, color:C.white, border:'none', padding:'8px 14px', borderRadius:100, fontSize:12, cursor:cargando?'not-allowed':'pointer', fontFamily:font, fontWeight:600, flexShrink:0 }}>
+          style={{ background: cargando ? C.light : C.orange, color: C.white, border: 'none', padding: '8px 14px', borderRadius: 100, fontSize: 12, cursor: cargando ? 'not-allowed' : 'pointer', fontFamily: font, fontWeight: 600, flexShrink: 0 }}>
           {cargando ? '...' : 'Aplicar'}
         </button>
-        <button onClick={onCancelar} style={{ background:'none', border:`1px solid ${C.light}`, color:C.mid, padding:'8px 10px', borderRadius:100, fontSize:11, cursor:'pointer', fontFamily:font }}>✕</button>
+        <button onClick={onCancelar} style={{ background: 'none', border: `1px solid ${C.light}`, color: C.mid, padding: '8px 10px', borderRadius: 100, fontSize: 11, cursor: 'pointer', fontFamily: font }}>✕</button>
       </div>
     </div>
   );
 }
 
-export default function DailyTimeline({ planSemanal, setPlanSemanal, email, objetivoId, onAbrirConfig, onTodoCompletado, onGenerarPlan, cargandoPlan, objetivo, onChecksChange }) {
+export default function DailyTimeline({
+  planSemanal, setPlanSemanal,
+  email, objetivoId,
+  onAbrirConfig, onTodoCompletado, onGenerarPlan, cargandoPlan, objetivo,
+  onChecksChange, onGastoActividadChange,
+}) {
   const diaHoy = getDiaHoy();
   const eventoActivo = getEventoActivo();
 
-  // Navegación temporal — 0=hoy, -1=ayer
   const [offsetDia, setOffsetDia] = useState(0);
   const esHoy = offsetDia === 0;
   const fechaActiva = fechaStr(offsetDia);
@@ -53,22 +62,21 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
   const [sustituyendo, setSustituyendo] = useState(null);
   const [cargandoSustitucion, setCargandoSustitucion] = useState(false);
   const [sustitucionExito, setSustitucionExito] = useState(null);
+  const [mensajeCoachSustitucion, setMensajeCoachSustitucion] = useState(null);
 
   const diaData = planSemanal?.dieta?.[diaIndice];
   const entreno = planSemanal?.ejercicios?.[diaIndice];
 
-  // Cargar checks de HOY desde localStorage
+  // Cargar checks hoy
   useEffect(() => {
     if (!email || !esHoy) return;
-    const cacheKey = `checks_${email}_${fechaActiva}`;
-    try { const s = localStorage.getItem(cacheKey); if (s) setChecks(JSON.parse(s)); } catch(e) {}
+    try { const s = localStorage.getItem(`checks_${email}_${fechaActiva}`); if (s) setChecks(JSON.parse(s)); } catch (e) {}
   }, [email, fechaActiva]);
 
-  // Cargar checks de AYER desde Supabase
+  // Cargar ayer desde Supabase
   useEffect(() => {
     if (!email || esHoy) return;
-    setCargandoAyer(true);
-    setModoLectura(true);
+    setCargandoAyer(true); setModoLectura(true);
     cargarLogDia(email, fechaActiva).then(log => {
       if (log?.completed_tasks) {
         setChecks(typeof log.completed_tasks === 'string' ? JSON.parse(log.completed_tasks) : log.completed_tasks);
@@ -79,19 +87,12 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
     });
   }, [email, fechaActiva]);
 
-  // Persistir checks de hoy
+  // Persistir checks hoy
   useEffect(() => {
     if (!email || !esHoy) return;
-    const cacheKey = `checks_${email}_${fechaActiva}`;
-    try { localStorage.setItem(cacheKey, JSON.stringify(checks)); } catch(e) {}
-
-    // Subir a Supabase (async, sin bloquear)
+    try { localStorage.setItem(`checks_${email}_${fechaActiva}`, JSON.stringify(checks)); } catch (e) {}
     actualizarCompletedTasks(email, fechaActiva, checks).catch(console.error);
-
-    // Notificar al padre para que DailyCheckIn también lo persista
     if (onChecksChange) onChecksChange(checks);
-
-    // Detectar completado
     const relevantes = entreno ? [checks.desayuno, checks.comida, checks.cena, checks.entreno] : [checks.desayuno, checks.comida, checks.cena];
     if (relevantes.every(Boolean) && !celebrado) { setCelebrado(true); if (onTodoCompletado) onTodoCompletado(); }
   }, [checks]);
@@ -102,22 +103,54 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
     if (!peticion.trim()) return;
     setSustituyendo(null);
     setCargandoSustitucion(eventoKey);
-    const contenidoActual = eventoKey === 'entreno' ? `${entreno?.tipo}: ${entreno?.ejercicios?.join(', ')}` : diaData?.[eventoKey] || '';
+    setMensajeCoachSustitucion(null);
+
+    const esEntreno = eventoKey === 'entreno';
+    const contenidoActual = esEntreno
+      ? `${entreno?.tipo || 'Entrenamiento'}: ${entreno?.ejercicios?.join(', ')}`
+      : diaData?.[eventoKey] || '';
+
     try {
       const res = await fetch('/api/substitute', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comida_actual: contenidoActual, peticion, tipo: eventoKey, objetivo: objetivo?.nombre || 'mantener peso' }),
+        body: JSON.stringify({
+          comida_actual: contenidoActual,
+          peticion,
+          tipo: esEntreno ? 'entreno' : eventoKey,
+          objetivo: objetivo?.nombre || 'mantener peso',
+          peso_usuario: 75, // se podría pasar desde último test
+        }),
       });
       const data = await res.json();
+
       if (data.sustitucion && planSemanal && setPlanSemanal) {
         const nuevo = JSON.parse(JSON.stringify(planSemanal));
-        if (eventoKey !== 'entreno') nuevo.dieta[diaIndice][eventoKey] = data.sustitucion;
+
+        if (esEntreno) {
+          // Actualizar texto del entreno en el plan
+          if (nuevo.ejercicios?.[diaIndice]) {
+            nuevo.ejercicios[diaIndice].tipo = data.sustitucion;
+            nuevo.ejercicios[diaIndice].ejercicios = [data.sustitucion];
+          }
+          // Notificar delta calórico al Centro de Mando
+          if (data.delta_kcal && onGastoActividadChange) {
+            onGastoActividadChange(data.delta_kcal);
+          }
+          // Mostrar mensaje del coach si viene
+          if (data.mensaje_coach) {
+            setMensajeCoachSustitucion(data.mensaje_coach);
+            setTimeout(() => setMensajeCoachSustitucion(null), 6000);
+          }
+        } else {
+          nuevo.dieta[diaIndice][eventoKey] = data.sustitucion;
+        }
+
         setPlanSemanal(nuevo);
-        try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: nuevo, fecha: Date.now() })); } catch(e) {}
+        try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: nuevo, fecha: Date.now() })); } catch (e) {}
         setSustitucionExito(eventoKey);
         setTimeout(() => setSustitucionExito(null), 2500);
       }
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error(e); }
     setCargandoSustitucion(null);
   };
 
@@ -142,7 +175,11 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
           <button onClick={onGenerarPlan} disabled={cargandoPlan} style={{ background: cargandoPlan ? C.light : C.green, color: C.white, border: 'none', padding: '13px 32px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: cargandoPlan ? 'not-allowed' : 'pointer', fontFamily: font }}>
             {cargandoPlan ? 'Generando...' : 'Generar mi plan semanal'}
           </button>
-          {cargandoPlan && <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>{[0,1,2].map(i => <div key={i} style={{ width: 48, height: 8, background: '#F0EBE3', borderRadius: 100, animation: `pulse 1.5s ease-in-out ${i*0.2}s infinite` }} />)}</div>}
+          {cargandoPlan && (
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
+              {[0, 1, 2].map(i => <div key={i} style={{ width: 48, height: 8, background: '#F0EBE3', borderRadius: 100, animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite` }} />)}
+            </div>
+          )}
         </div>
         <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
       </div>
@@ -151,7 +188,7 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
 
   const eventos = [
     { key: 'desayuno', hora: '7:30', titulo: 'Desayuno', icono: '🌅', contenido: diaData?.desayuno, color: '#E8A020', bg: '#FFF8EC', border: '#F9CFA8', esEntreno: false },
-    entreno ? { key: 'entreno', hora: '10:00', titulo: entreno?.tipo || 'Entrenamiento', icono: '🏋️', contenido: null, ejercicios: entreno?.ejercicios, color: C.green, bg: C.greenPale, border: '#C8E8B0', esEntreno: true } : null,
+    entreno ? { key: 'entreno', hora: '10:00', titulo: entreno?.tipo || 'Entrenamiento', icono: '🏋️', ejercicios: entreno?.ejercicios, color: C.green, bg: C.greenPale, border: '#C8E8B0', esEntreno: true } : null,
     { key: 'comida', hora: '13:30', titulo: 'Comida', icono: '☀️', contenido: diaData?.comida, snack: diaData?.snack, color: C.orange, bg: C.orangePale, border: '#F9CFA8', esEntreno: false },
     { key: 'cena', hora: '20:30', titulo: 'Cena', icono: '🌙', contenido: diaData?.cena, color: '#5B6FA8', bg: '#EEF0FA', border: '#C8CEEA', esEntreno: false },
   ].filter(Boolean);
@@ -160,6 +197,7 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
     <>
       <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}} @keyframes pop{0%{transform:scale(0.8)}50%{transform:scale(1.15)}100%{transform:scale(1)}}`}</style>
 
+      {/* Modal ver rutina */}
       {verRutina && entreno && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div onClick={() => setVerRutina(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
@@ -174,7 +212,7 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {entreno.ejercicios?.map((ej, i) => (
                 <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', background: C.greenPale, borderRadius: 12, border: '1px solid #C8E8B0' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.green, color: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i+1}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.green, color: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
                   <div style={{ fontSize: 13, color: C.dark, lineHeight: 1.5, paddingTop: 4 }}>{ej}</div>
                 </div>
               ))}
@@ -184,6 +222,7 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
       )}
 
       <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
+
         {/* Header */}
         <div style={{ background: modoLectura ? '#6B6B6B' : C.green, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -193,21 +232,12 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
               </div>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: C.white }}>{DIAS_FULL[diaIndice]}</div>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {/* Navegación temporal */}
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => { setOffsetDia(-1); setModoLectura(true); }} style={{ background: offsetDia===-1 ? C.white : 'rgba(255,255,255,0.2)', border: 'none', color: offsetDia===-1 ? C.green : C.white, padding: '6px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>
-                  ← Ayer
-                </button>
-                <button onClick={() => { setOffsetDia(0); setModoLectura(false); }} style={{ background: offsetDia===0 ? C.white : 'rgba(255,255,255,0.2)', border: 'none', color: offsetDia===0 ? C.green : C.white, padding: '6px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>
-                  Hoy
-                </button>
-              </div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button onClick={() => { setOffsetDia(-1); setModoLectura(true); }} style={{ background: offsetDia === -1 ? C.white : 'rgba(255,255,255,0.2)', border: 'none', color: offsetDia === -1 ? C.green : C.white, padding: '6px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>← Ayer</button>
+              <button onClick={() => { setOffsetDia(0); setModoLectura(false); }} style={{ background: offsetDia === 0 ? C.white : 'rgba(255,255,255,0.2)', border: 'none', color: offsetDia === 0 ? C.green : C.white, padding: '6px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>Hoy</button>
               <button onClick={onAbrirConfig} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: C.white, width: 36, height: 36, borderRadius: '50%', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚙️</button>
             </div>
           </div>
-
-          {/* Barra progreso — solo hoy */}
           {esHoy && (
             <div style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -219,14 +249,20 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
               </div>
             </div>
           )}
-
-          {/* Banner modo lectura */}
           {modoLectura && (
             <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 10px', fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
-              📖 Modo lectura — muestra lo que marcaste ayer
+              📖 Modo lectura — lo que marcaste ayer
             </div>
           )}
         </div>
+
+        {/* Mensaje coach sustitucion */}
+        {mensajeCoachSustitucion && (
+          <div style={{ background: C.greenPale, border: '1px solid #C8E8B0', padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center', animation: 'fadeIn 0.3s ease' }}>
+            <span style={{ fontSize: 16 }}>🤖</span>
+            <span style={{ fontSize: 12, color: '#3B6D11', lineHeight: 1.5 }}>{mensajeCoachSustitucion}</span>
+          </div>
+        )}
 
         {/* Celebración */}
         {celebrado && progreso === 100 && esHoy && (
@@ -236,10 +272,7 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
           </div>
         )}
 
-        {/* Cargando ayer */}
-        {cargandoAyer && (
-          <div style={{ padding: '24px', textAlign: 'center', color: C.mid, fontSize: 13 }}>Cargando datos de ayer...</div>
-        )}
+        {cargandoAyer && <div style={{ padding: '24px', textAlign: 'center', color: C.mid, fontSize: 13 }}>Cargando datos de ayer...</div>}
 
         {/* Timeline */}
         {!cargandoAyer && (
@@ -255,16 +288,17 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
                   const exito = sustitucionExito === ev.key;
 
                   return (
-                    <div key={ev.key} style={{ display: 'flex', gap: 16, paddingBottom: idx < eventos.length-1 ? 16 : 0 }}>
+                    <div key={ev.key} style={{ display: 'flex', gap: 16, paddingBottom: idx < eventos.length - 1 ? 16 : 0 }}>
                       <div style={{ flexShrink: 0 }}>
                         <div style={{ width: 40, height: 40, borderRadius: '50%', background: completado ? C.green : esActual ? ev.color : C.white, border: `2px solid ${completado ? C.green : esActual ? ev.color : C.light}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: completado ? 16 : 18, boxShadow: esActual ? `0 0 0 4px ${ev.color}22` : 'none', transition: 'all 0.3s ease', zIndex: 1, position: 'relative' }}>
                           {completado ? '✓' : ev.icono}
                         </div>
                       </div>
+
                       <div style={{ flex: 1, background: exito ? '#F0FDF4' : completado ? '#F8FDF5' : ev.bg, border: `1.5px solid ${exito ? C.green : completado ? '#C8E8B0' : ev.border}`, borderRadius: 16, padding: '14px 16px', opacity: completado && modoLectura ? 0.85 : completado ? 0.75 : 1, transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
                         {esActual && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,${ev.color},transparent)`, borderRadius: '16px 16px 0 0' }} />}
-                        {exito && <div style={{ position: 'absolute', top: 8, right: 8, background: C.green, color: C.white, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, animation: 'pop 0.4s ease' }}>✓ Actualizado</div>}
-                        {modoLectura && completado && <div style={{ position: 'absolute', top: 8, right: 8, background: C.green, color: C.white, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100 }}>✓ Hecho ayer</div>}
+                        {exito && <div style={{ position: 'absolute', top: 8, right: 44, background: C.green, color: C.white, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, animation: 'pop 0.4s ease' }}>✓ Actualizado</div>}
+                        {modoLectura && completado && <div style={{ position: 'absolute', top: 8, right: 44, background: C.green, color: C.white, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100 }}>✓ Hecho ayer</div>}
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div style={{ flex: 1, marginRight: 8 }}>
@@ -278,13 +312,13 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
                             {ev.esEntreno ? (
                               <div>
                                 <div style={{ marginBottom: 8 }}>
-                                  {entreno?.ejercicios?.slice(0,2).map((ej,j) => (
+                                  {entreno?.ejercicios?.slice(0, 2).map((ej, j) => (
                                     <div key={j} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
                                       <span style={{ color: C.green, flexShrink: 0, fontSize: 10, marginTop: 2 }}>▸</span>
                                       <span style={{ fontSize: 12, color: C.dark, textDecoration: completado ? 'line-through' : 'none' }}>{ej}</span>
                                     </div>
                                   ))}
-                                  {entreno?.ejercicios?.length > 2 && <div style={{ fontSize: 11, color: C.mid }}>+{entreno.ejercicios.length-2} más</div>}
+                                  {entreno?.ejercicios?.length > 2 && <div style={{ fontSize: 11, color: C.mid }}>+{entreno.ejercicios.length - 2} más</div>}
                                 </div>
                                 <button onClick={() => setVerRutina(true)} style={{ background: 'none', border: `1px solid ${C.green}`, color: C.green, padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>
                                   Ver rutina completa →
@@ -301,7 +335,12 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
                             )}
 
                             {esSustituyendo && (
-                              <SubstituteInput onEnviar={(p) => sustituir(ev.key, p)} onCancelar={() => setSustituyendo(null)} cargando={estaCargando} />
+                              <SubstituteInput
+                                onEnviar={(p) => sustituir(ev.key, p)}
+                                onCancelar={() => setSustituyendo(null)}
+                                cargando={estaCargando}
+                                placeholder={ev.esEntreno ? 'Ej: Hoy prefiero surf 90 min...' : 'Ej: No tengo arándanos, tengo plátano...'}
+                              />
                             )}
 
                             {!completado && !esSustituyendo && !estaCargando && !modoLectura && (
@@ -311,7 +350,6 @@ export default function DailyTimeline({ planSemanal, setPlanSemanal, email, obje
                             )}
                           </div>
 
-                          {/* Check — deshabilitado en modo lectura */}
                           <button onClick={() => toggleCheck(ev.key)} style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${completado ? C.green : C.light}`, background: completado ? C.green : C.white, color: completado ? C.white : C.light, fontSize: 14, cursor: modoLectura ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s ease', opacity: modoLectura ? 0.6 : 1 }}>
                             ✓
                           </button>
