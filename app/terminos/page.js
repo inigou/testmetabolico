@@ -63,7 +63,7 @@ El usuario debe contrastar cualquier recomendación con un profesional sanitario
           },
           {
             titulo: "6. Suscripción y pagos",
-            contenido: `El acceso al test ICM es gratuito. El servicio de seguimiento mensual (historial de evolución, coach ilimitado y plan semanal personalizado) está sujeto a una suscripción de 9,90€/mes.
+            contenido: `El acceso al test ICM es gratuito. El servicio de seguimiento mensual (historial de evolución, coach ilimitado y plan semanal personalizado) está sujeto a una suscripción de 19,90€/mes.
 
 El usuario puede cancelar la suscripción en cualquier momento. No se realizan reembolsos por períodos ya facturados. Los precios pueden modificarse con previo aviso de 30 días.`,
             color: true

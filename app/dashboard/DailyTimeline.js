@@ -110,6 +110,7 @@ export default function DailyTimeline({
   onChecksChange, onGastoActividadChange,
   presupuestoBase,   // kcal objetivo del día (desde ConfiguracionMetabolica plantilla base)
   onKcalConsumidas,  // callback para subir kcal consumidas al padre (LiveCalorieBudget)
+  modoRescate,       // true cuando hay protocolo de evento activo
 }) {
   const diaHoy = getDiaHoy();
   const eventoActivo = getEventoActivo();
@@ -138,14 +139,24 @@ export default function DailyTimeline({
   // ── ¿El plan tiene kcal? Si no, mostrar aviso de regeneración ───
   const planTieneKcal = diaData?.kcal_comida != null;
 
-  // ── Calcular kcal consumidas según checks ─────────────────────────
+  // ── Segmentos para el nuevo LiveCalorieBudget ─────────────────────
+  // Cada segmento tiene: tipo, kcal, completado
+  // El entreno se pasa con su tipo 'entreno' — LiveCalorieBudget lo trata como gasto (vacía)
+  const segmentosBase = [
+    { tipo: 'desayuno', kcal: diaData?.kcal_desayuno || 0,         completado: checks.desayuno },
+    { tipo: 'comida',   kcal: diaData?.kcal_comida   || 0,         completado: checks.comida   },
+    { tipo: 'cena',     kcal: diaData?.kcal_cena     || 0,         completado: checks.cena     },
+    { tipo: 'snack',    kcal: diaData?.kcal_snack    || 0,         completado: checks.comida   }, // snack va con comida
+    ...(entreno ? [{ tipo: 'entreno', kcal: entreno?.kcal_quemadas || 0, completado: checks.entreno }] : []),
+    ...(ingestaExtra > 0 ? [{ tipo: 'quickadd', kcal: ingestaExtra, completado: true }] : []),
+  ].filter(s => s.kcal > 0);
+
+  // kcal para lógica legacy (Quick Add, onKcalConsumidas)
   const kcalPorTarea = {
     desayuno: diaData?.kcal_desayuno || 0,
     comida:   diaData?.kcal_comida   || 0,
     cena:     diaData?.kcal_cena     || 0,
-    entreno:  entreno?.kcal_quemadas ? -(entreno.kcal_quemadas) : 0, // entreno suma al gasto, no a ingesta
   };
-
   const kcalConsumidas = (
     (checks.desayuno ? kcalPorTarea.desayuno : 0) +
     (checks.comida   ? kcalPorTarea.comida   : 0) +
@@ -153,7 +164,7 @@ export default function DailyTimeline({
     ingestaExtra
   );
 
-  // Notificar kcal consumidas al padre cada vez que cambien
+  // Notificar kcal consumidas al padre
   useEffect(() => {
     if (onKcalConsumidas && esHoy) onKcalConsumidas(kcalConsumidas);
   }, [kcalConsumidas, esHoy]);
@@ -386,13 +397,13 @@ export default function DailyTimeline({
             </div>
           </div>
 
-          {/* LiveCalorieBudget integrado en el header */}
+          {/* LiveCalorieBudget — Marcador Metabólico Vivo */}
           {esHoy && presupuestoBase > 0 && (
             <div style={{ marginTop: 14 }}>
               <LiveCalorieBudget
                 presupuesto={presupuestoBase}
-                kcalConsumidas={kcalConsumidas}
-                gastoExtra={gastoExtraLocal}
+                segmentos={segmentosBase}
+                modoRescate={modoRescate || false}
               />
             </div>
           )}

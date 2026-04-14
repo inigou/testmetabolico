@@ -246,6 +246,7 @@ export default function Dashboard() {
   const [gastoActividadExtra, setGastoActividadExtra] = useState(0);
   const [mostrarSuperBoton, setMostrarSuperBoton] = useState(false);
   const [kcalConsumidas, setKcalConsumidas] = useState(0);
+  const [modoRescateActivo, setModoRescateActivo] = useState(false);
 
   // Presupuesto base desde configuración guardada
   const [presupuestoBase, setPresupuestoBase] = useState(0);
@@ -364,6 +365,8 @@ export default function Dashboard() {
         setPlanSemanal(data.plan);
         try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: data.plan, fecha: Date.now() })); } catch (e) {}
         actualizarPlanDia(data.plan);
+        setModoRescateActivo(true); // activa el marcador en modo rescate
+        setTimeout(() => setModoRescateActivo(false), 24 * 60 * 60 * 1000); // expira al día siguiente
 
         const diasTexto = data.dias_modificados?.join(' y ') || 'los días afectados';
         const msgCoach = data.mensaje_coach
@@ -623,6 +626,7 @@ export default function Dashboard() {
               onGastoActividadChange={(delta) => setGastoActividadExtra(prev => prev + delta)}
               presupuestoBase={presupuestoBase}
               onKcalConsumidas={(kcal) => setKcalConsumidas(kcal)}
+              modoRescate={modoRescateActivo}
             />
 
             {/* ═══ SÚPER-BOTÓN DE EVENTOS ═══ */}
@@ -658,7 +662,7 @@ export default function Dashboard() {
             <div style={{ background: C.orange, borderRadius: 16, padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: 15, color: C.white, marginBottom: 3 }}>Seguimiento mensual</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>9,90€/mes · Cancela cuando quieras</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>19,90€/mes · Cancela cuando quieras</div>
               </div>
               <a href="#" style={{ background: C.white, color: C.orange, padding: '9px 20px', borderRadius: 100, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Activar →</a>
             </div>
