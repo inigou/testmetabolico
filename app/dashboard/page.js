@@ -400,6 +400,7 @@ export default function Dashboard() {
       if (cfg.horarioEntreno)            prefTexto += `Horario entreno: ${cfg.horarioEntreno}. `;
     } catch (e) { console.error(e); }
     const obj = OBJETIVOS.find(o => o.id === objetivoId) || OBJETIVOS[1];
+    
     try {
       const res = await fetch('/api/coach', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -412,16 +413,33 @@ export default function Dashboard() {
         setCargandoPlan(false); return;
       }
       const data = await res.json();
+      
       if (data.plan) {
-        setPlanSemanal(data.plan);
-        await guardarPlanDB(email, objetivoId, data.plan);
-        try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: data.plan, fecha: Date.now() })); } catch (e) {}
-        actualizarPlanDia(data.plan);
+        // 🛡️ CIRUGÍA DEL HISTORIAL: Fusión de pasado (antiguo) y futuro (nuevo)
+        const diaHoyIndex = getDiaHoy(); // Lunes: 0, Martes: 1, Miércoles: 2...
+        let planFinal = data.plan;
+
+        if (planSemanal && planSemanal.dieta) {
+          planFinal = {
+            ...data.plan, // Conservamos directrices y lista de compra nueva
+            dieta: data.plan.dieta.map((diaNuevo, i) => 
+              i < diaHoyIndex ? planSemanal.dieta[i] : diaNuevo
+            ),
+            ejercicios: data.plan.ejercicios.map((ejNuevo, i) => 
+              (i < diaHoyIndex && planSemanal.ejercicios) ? planSemanal.ejercicios[i] : ejNuevo
+            )
+          };
+        }
+
+        setPlanSemanal(planFinal);
+        await guardarPlanDB(email, objetivoId, planFinal);
+        try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: planFinal, fecha: Date.now() })); } catch (e) {}
+        actualizarPlanDia(planFinal);
       }
     } catch (e) { console.error(e); }
     setCargandoPlan(false);
   };
-
+  
   const enviarMensaje = async (texto) => {
     const q = texto || inputChat;
     if (!q.trim() || chatCargando) return;
