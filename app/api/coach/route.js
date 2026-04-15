@@ -56,7 +56,7 @@ export async function POST(request) {
     if (tipo === 'plan') {
       const message = await client.messages.create({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 4096,
+        max_tokens: 10000,
         system: `Eres un especialista en nutricion deportiva. Genera planes semanales en JSON estricto con calorías por comida.
 OBJETIVO DEL USUARIO: ${perfil.objetivo}
 ${perfil.preferencias ? `PREFERENCIAS Y RESTRICCIONES (OBLIGATORIO RESPETAR): ${perfil.preferencias}` : ''}
@@ -84,14 +84,24 @@ Responde SOLO JSON valido sin markdown.`,
         }],
       });
 
-      let texto = message.content[0].text.trim()
-        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+      let texto = message.content[0].text;
+      
+      // 1. Limpieza a prueba de balas: buscar el primer { y el último }
+      const inicio = texto.indexOf('{');
+      const fin = texto.lastIndexOf('}');
+      
+      if (inicio !== -1 && fin !== -1) {
+        texto = texto.substring(inicio, fin + 1);
+      } else {
+        throw new Error("No se encontró ningún JSON válido en la respuesta");
+      }
 
       try {
         const plan = JSON.parse(texto);
         return Response.json({ plan });
       } catch (e) {
-        console.error('JSON parse error:', e.message);
+        console.error('JSON parse error detallado:', e.message);
+        console.error('Texto recibido de la IA:', texto.slice(0, 150) + '...');
         return Response.json({ error: 'Error generando el plan. Inténtalo de nuevo.' }, { status: 500 });
       }
     }

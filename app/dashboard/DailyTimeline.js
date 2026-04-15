@@ -9,11 +9,11 @@ const C = {
 };
 const font = 'Trebuchet MS, Verdana, sans-serif';
 const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-const getDiaHoy  = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
-const getHora    = () => new Date().getHours();
+const getDiaHoy       = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
+const getHora         = () => new Date().getHours();
 const getEventoActivo = () => { const h = getHora(); if (h < 10) return 'desayuno'; if (h < 14) return 'entreno'; if (h < 16) return 'comida'; return 'cena'; };
-const fechaStr   = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().split('T')[0]; };
-const diaDeStr   = (str) => { const d = new Date(str + 'T12:00:00'); return d.getDay() === 0 ? 6 : d.getDay() - 1; };
+const fechaStr        = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().split('T')[0]; };
+const diaDeStr        = (str) => { const d = new Date(str + 'T12:00:00'); return d.getDay() === 0 ? 6 : d.getDay() - 1; };
 
 const SB_URL = 'https://khinwyoejhoqqunfyjft.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoaW53eW9lamhvcXF1bmZ5amZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjgxMzksImV4cCI6MjA5MDc0NDEzOX0.CE8EzbHQLdKN9Ag0nZVGS3gHPOc4NK464RyLtrP_nYM';
@@ -31,13 +31,16 @@ async function actualizarCompletedTasks(email, fecha, tasks) {
 
 async function cargarLogDia(email, fecha) {
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${fecha}&select=completed_tasks`, { headers: sbH });
+    const res = await fetch(
+      `${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${fecha}&select=completed_tasks`,
+      { headers: sbH }
+    );
     const rows = await res.json();
     return rows?.[0] || null;
   } catch (e) { return null; }
 }
 
-// ── Input de sustitución aislado para evitar pérdida de foco ─────────
+// ── Input sustitución ────────────────────────────────────────────────
 function SubstituteInput({ onEnviar, onCancelar, cargando, placeholder }) {
   const [val, setVal] = useState('');
   return (
@@ -60,20 +63,16 @@ function SubstituteInput({ onEnviar, onCancelar, cargando, placeholder }) {
   );
 }
 
-// ── Quick Add aislado para evitar pérdida de foco ────────────────────
+// ── Quick Add ────────────────────────────────────────────────────────
 function QuickAddInput({ onEnviar, cargando }) {
   const [val, setVal] = useState('');
   const [exito, setExito] = useState(null);
 
   const enviar = async () => {
     if (!val.trim() || cargando) return;
-    const texto = val;
-    setVal('');
+    const texto = val; setVal('');
     const resultado = await onEnviar(texto);
-    if (resultado) {
-      setExito(resultado);
-      setTimeout(() => setExito(null), 4000);
-    }
+    if (resultado) { setExito(resultado); setTimeout(() => setExito(null), 4000); }
   };
 
   return (
@@ -81,8 +80,7 @@ function QuickAddInput({ onEnviar, cargando }) {
       <div style={{ fontSize: 11, fontWeight: 700, color: C.dark, marginBottom: 4 }}>⚡ Entrada rápida</div>
       <div style={{ fontSize: 11, color: C.mid, marginBottom: 10, lineHeight: 1.5 }}>
         ¿Algo extra hoy? Escríbelo y lo añadimos al contador calórico
-        <br />
-        <span style={{ fontSize: 10, color: '#C0B8B0' }}>Ej: "2 copas de vino", "Caminata extra 30 min", "Café con leche"</span>
+        <br /><span style={{ fontSize: 10, color: '#C0B8B0' }}>Ej: "2 copas de vino", "Caminata extra 30 min"</span>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={val} onChange={e => setVal(e.target.value)}
@@ -96,7 +94,7 @@ function QuickAddInput({ onEnviar, cargando }) {
       </div>
       {exito && (
         <div style={{ marginTop: 8, padding: '6px 10px', background: exito.tipo === 'ingesta' ? C.orangePale : C.greenPale, borderRadius: 8, fontSize: 11, color: exito.tipo === 'ingesta' ? '#C05010' : '#3B6D11', animation: 'fadeIn 0.2s ease' }}>
-          {exito.tipo === 'ingesta' ? '🍽️' : '🏃'} <strong>{exito.kcal} kcal</strong> {exito.tipo === 'ingesta' ? 'añadidas a consumido' : 'añadidas a gasto'} — {exito.descripcion}
+          {exito.tipo === 'ingesta' ? '🍽️' : '🏃'} <strong>{exito.kcal} kcal</strong> {exito.tipo === 'ingesta' ? 'añadidas' : 'gastadas'} — {exito.descripcion}
         </div>
       )}
     </div>
@@ -108,50 +106,42 @@ export default function DailyTimeline({
   email, objetivoId,
   onAbrirConfig, onTodoCompletado, onGenerarPlan, cargandoPlan, objetivo,
   onChecksChange, onGastoActividadChange,
-  presupuestoBase,   // kcal objetivo del día (desde ConfiguracionMetabolica plantilla base)
-  onKcalConsumidas,  // callback para subir kcal consumidas al padre (LiveCalorieBudget)
-  modoRescate,       // true cuando hay protocolo de evento activo
+  presupuestoBase, onKcalConsumidas, modoRescate,
 }) {
-  const diaHoy = getDiaHoy();
+  const diaHoy       = getDiaHoy();
   const eventoActivo = getEventoActivo();
 
-  const [offsetDia, setOffsetDia]   = useState(0);
-  const esHoy = offsetDia === 0;
+  const [offsetDia, setOffsetDia]         = useState(0);
+  const esHoy       = offsetDia === 0;
   const fechaActiva = fechaStr(offsetDia);
   const diaIndice   = diaDeStr(fechaActiva);
 
-  const [checks, setChecks]           = useState({ desayuno: false, comida: false, cena: false, entreno: false });
-  const [modoLectura, setModoLectura] = useState(false);
-  const [cargandoAyer, setCargandoAyer] = useState(false);
-  const [verRutina, setVerRutina]     = useState(false);
-  const [celebrado, setCelebrado]     = useState(false);
-  const [sustituyendo, setSustituyendo] = useState(null);
+  const [checks, setChecks]                     = useState({ desayuno: false, comida: false, cena: false, entreno: false });
+  const [modoLectura, setModoLectura]           = useState(false);
+  const [cargandoAyer, setCargandoAyer]         = useState(false);
+  const [verRutina, setVerRutina]               = useState(false);
+  const [celebrado, setCelebrado]               = useState(false);
+  const [sustituyendo, setSustituyendo]         = useState(null);
   const [cargandoSustitucion, setCargandoSustitucion] = useState(false);
   const [sustitucionExito, setSustitucionExito] = useState(null);
   const [mensajeCoachSustitucion, setMensajeCoachSustitucion] = useState(null);
   const [quickAddCargando, setQuickAddCargando] = useState(false);
   const [gastoExtraLocal, setGastoExtraLocal]   = useState(0);
-  const [ingestaExtra, setIngestaExtra]           = useState(0);
+  const [ingestaExtra, setIngestaExtra]         = useState(0);
 
   const diaData = planSemanal?.dieta?.[diaIndice];
   const entreno = planSemanal?.ejercicios?.[diaIndice];
 
-  // ── ¿El plan tiene kcal? Si no, mostrar aviso de regeneración ───
-  const planTieneKcal = diaData?.kcal_comida != null;
-
-  // ── Segmentos para el nuevo LiveCalorieBudget ─────────────────────
-  // Cada segmento tiene: tipo, kcal, completado
-  // El entreno se pasa con su tipo 'entreno' — LiveCalorieBudget lo trata como gasto (vacía)
+  // Segmentos para LiveCalorieBudget
   const segmentosBase = [
-    { tipo: 'desayuno', kcal: diaData?.kcal_desayuno || 0,         completado: checks.desayuno },
-    { tipo: 'comida',   kcal: diaData?.kcal_comida   || 0,         completado: checks.comida   },
-    { tipo: 'cena',     kcal: diaData?.kcal_cena     || 0,         completado: checks.cena     },
-    { tipo: 'snack',    kcal: diaData?.kcal_snack    || 0,         completado: checks.comida   }, // snack va con comida
+    { tipo: 'desayuno', kcal: diaData?.kcal_desayuno || 0, completado: checks.desayuno },
+    { tipo: 'comida',   kcal: diaData?.kcal_comida   || 0, completado: checks.comida   },
+    { tipo: 'cena',     kcal: diaData?.kcal_cena     || 0, completado: checks.cena     },
+    { tipo: 'snack',    kcal: diaData?.kcal_snack    || 0, completado: checks.comida   },
     ...(entreno ? [{ tipo: 'entreno', kcal: entreno?.kcal_quemadas || 0, completado: checks.entreno }] : []),
     ...(ingestaExtra > 0 ? [{ tipo: 'quickadd', kcal: ingestaExtra, completado: true }] : []),
   ].filter(s => s.kcal > 0);
 
-  // kcal para lógica legacy (Quick Add, onKcalConsumidas)
   const kcalPorTarea = {
     desayuno: diaData?.kcal_desayuno || 0,
     comida:   diaData?.kcal_comida   || 0,
@@ -164,18 +154,20 @@ export default function DailyTimeline({
     ingestaExtra
   );
 
-  // Notificar kcal consumidas al padre
   useEffect(() => {
     if (onKcalConsumidas && esHoy) onKcalConsumidas(kcalConsumidas);
   }, [kcalConsumidas, esHoy]);
 
-  // ── Cargar checks hoy ────────────────────────────────────────────
+  // Cargar checks de hoy desde localStorage
   useEffect(() => {
     if (!email || !esHoy) return;
-    try { const s = localStorage.getItem(`checks_${email}_${fechaActiva}`); if (s) setChecks(JSON.parse(s)); } catch (e) {}
+    try {
+      const s = localStorage.getItem(`checks_${email}_${fechaActiva}`);
+      if (s) setChecks(JSON.parse(s));
+    } catch (e) {}
   }, [email, fechaActiva]);
 
-  // ── Cargar ayer desde Supabase ───────────────────────────────────
+  // Cargar ayer desde Supabase
   useEffect(() => {
     if (!email || esHoy) return;
     setCargandoAyer(true); setModoLectura(true);
@@ -189,66 +181,58 @@ export default function DailyTimeline({
     });
   }, [email, fechaActiva]);
 
-  // ── Persistir checks hoy ─────────────────────────────────────────
+  // Persistir checks hoy
   useEffect(() => {
     if (!email || !esHoy) return;
     try { localStorage.setItem(`checks_${email}_${fechaActiva}`, JSON.stringify(checks)); } catch (e) {}
     actualizarCompletedTasks(email, fechaActiva, checks).catch(console.error);
     if (onChecksChange) onChecksChange(checks);
-    const relevantes = entreno ? [checks.desayuno, checks.comida, checks.cena, checks.entreno] : [checks.desayuno, checks.comida, checks.cena];
-    if (relevantes.every(Boolean) && !celebrado) { setCelebrado(true); if (onTodoCompletado) onTodoCompletado(); }
+    const relevantes = entreno
+      ? [checks.desayuno, checks.comida, checks.cena, checks.entreno]
+      : [checks.desayuno, checks.comida, checks.cena];
+    if (relevantes.every(Boolean) && !celebrado) {
+      setCelebrado(true);
+      if (onTodoCompletado) onTodoCompletado();
+    }
   }, [checks]);
 
   const toggleCheck = (key) => { if (modoLectura) return; setChecks(prev => ({ ...prev, [key]: !prev[key] })); };
 
-  // ── Adaptar tarea (comida o entreno) ─────────────────────────────
   const sustituir = async (eventoKey, peticion) => {
     if (!peticion.trim()) return;
     setSustituyendo(null);
     setCargandoSustitucion(eventoKey);
     setMensajeCoachSustitucion(null);
-
     const esEntreno = eventoKey === 'entreno';
     const contenidoActual = esEntreno
       ? `${entreno?.tipo || 'Entrenamiento'}: ${entreno?.ejercicios?.join(', ')}`
       : diaData?.[eventoKey] || '';
-
     try {
       const res = await fetch('/api/substitute', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           comida_actual: contenidoActual,
           kcal_actual: esEntreno ? entreno?.kcal_quemadas : kcalPorTarea[eventoKey],
-          peticion,
-          tipo: esEntreno ? 'entreno' : eventoKey,
+          peticion, tipo: esEntreno ? 'entreno' : eventoKey,
           objetivo: objetivo?.nombre || 'mantener peso',
           peso_usuario: 75,
         }),
       });
       const data = await res.json();
-
       if (data.sustitucion && planSemanal && setPlanSemanal) {
         const nuevo = JSON.parse(JSON.stringify(planSemanal));
-
         if (esEntreno) {
           if (nuevo.ejercicios?.[diaIndice]) {
             nuevo.ejercicios[diaIndice].tipo = data.sustitucion;
             nuevo.ejercicios[diaIndice].ejercicios = [data.sustitucion];
             if (data.kcal_nuevas != null) nuevo.ejercicios[diaIndice].kcal_quemadas = data.kcal_nuevas;
           }
-          if (data.delta_kcal && onGastoActividadChange) {
-            onGastoActividadChange(data.delta_kcal);
-            setGastoExtraLocal(prev => prev + data.delta_kcal);
-          }
-          if (data.mensaje_coach) {
-            setMensajeCoachSustitucion(data.mensaje_coach);
-            setTimeout(() => setMensajeCoachSustitucion(null), 6000);
-          }
+          if (data.delta_kcal && onGastoActividadChange) { onGastoActividadChange(data.delta_kcal); setGastoExtraLocal(prev => prev + data.delta_kcal); }
+          if (data.mensaje_coach) { setMensajeCoachSustitucion(data.mensaje_coach); setTimeout(() => setMensajeCoachSustitucion(null), 6000); }
         } else {
           nuevo.dieta[diaIndice][eventoKey] = data.sustitucion;
           if (data.kcal_nuevas != null) nuevo.dieta[diaIndice][`kcal_${eventoKey}`] = data.kcal_nuevas;
         }
-
         setPlanSemanal(nuevo);
         try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: nuevo, fecha: Date.now() })); } catch (e) {}
         setSustitucionExito(eventoKey);
@@ -258,40 +242,23 @@ export default function DailyTimeline({
     setCargandoSustitucion(null);
   };
 
-  // ── Quick Add ────────────────────────────────────────────────────
   const procesarQuickAdd = async (texto) => {
     setQuickAddCargando(true);
     try {
       const res = await fetch('/api/substitute', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          comida_actual: texto,
-          peticion: 'calcular_kcal',
-          tipo: 'quick_add',
-          objetivo: objetivo?.nombre || 'mantener peso',
-        }),
+        body: JSON.stringify({ comida_actual: texto, peticion: 'calcular_kcal', tipo: 'quick_add', objetivo: objetivo?.nombre || 'mantener peso' }),
       });
       const data = await res.json();
       const kcal = Math.abs(data.delta_kcal || data.kcal_nuevas || 0);
       const tipo = data.tipo_quick_add || (data.delta_kcal < 0 ? 'gasto' : 'ingesta');
-
-      if (tipo === 'gasto') {
-        if (onGastoActividadChange) onGastoActividadChange(kcal);
-        setGastoExtraLocal(prev => prev + kcal);
-      } else {
-        setIngestaExtra(prev => prev + kcal);
-      }
-
+      if (tipo === 'gasto') { if (onGastoActividadChange) onGastoActividadChange(kcal); setGastoExtraLocal(prev => prev + kcal); }
+      else { setIngestaExtra(prev => prev + kcal); }
       setQuickAddCargando(false);
       return { kcal, tipo, descripcion: data.sustitucion || texto };
-    } catch (e) {
-      console.error(e);
-      setQuickAddCargando(false);
-      return null;
-    }
+    } catch (e) { console.error(e); setQuickAddCargando(false); return null; }
   };
 
-  // ── Totales para barra de progreso clásica ────────────────────────
   const totalItems  = entreno ? 4 : 3;
   const totalChecks = [checks.desayuno, checks.comida, checks.cena, entreno ? checks.entreno : true].filter(Boolean).length;
   const progreso    = Math.round((totalChecks / totalItems) * 100);
@@ -310,45 +277,25 @@ export default function DailyTimeline({
         <div style={{ padding: '32px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🍽️</div>
           <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, color: C.dark, marginBottom: 8 }}>Sin plan esta semana</div>
-          <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.6, marginBottom: 24 }}>Genera tu plan para ver comidas y entreno personalizados con seguimiento calórico.</div>
-          <button onClick={onGenerarPlan} disabled={cargandoPlan}
-            style={{ background: cargandoPlan ? C.light : C.green, color: C.white, border: 'none', padding: '13px 32px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: cargandoPlan ? 'not-allowed' : 'pointer', fontFamily: font }}>
-            {cargandoPlan ? 'Generando...' : 'Generar mi plan semanal →'}
-          </button>
-        </div>
-        <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
-      </div>
-    );
-  }
-
-  // ── Aviso plan sin kcal (planes anteriores a Fase 6) ─────────────
-  if (!planTieneKcal) {
-    return (
-      <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
-        <div style={{ background: C.orange, padding: '16px 20px' }}>
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, color: C.white }}>Actualización disponible</div>
-        </div>
-        <div style={{ padding: '24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🔄</div>
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: C.dark, marginBottom: 8 }}>Nuevo sistema calórico activo</div>
-          <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.65, marginBottom: 20 }}>
-            Hemos actualizado el sistema para incluir conteo calórico en tiempo real por cada comida y entreno.
-            Regenera tu plan para activarlo.
+          <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.6, marginBottom: 24 }}>
+            Genera tu plan personalizado con comidas, entrenamiento y seguimiento calórico.
           </div>
           <button onClick={onGenerarPlan} disabled={cargandoPlan}
             style={{ background: cargandoPlan ? C.light : C.green, color: C.white, border: 'none', padding: '13px 32px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: cargandoPlan ? 'not-allowed' : 'pointer', fontFamily: font }}>
-            {cargandoPlan ? 'Actualizando plan...' : 'Actualizar mi plan con calorías →'}
+            {cargandoPlan ? '⏳ Generando tu plan...' : 'Generar mi plan semanal →'}
           </button>
         </div>
       </div>
     );
   }
 
+  // ── Eventos del timeline ─────────────────────────────────────────
+  // NOTA: ya no hay bloque "planTieneKcal" — el plan se muestra siempre
   const eventos = [
-    { key: 'desayuno', hora: '7:30',  titulo: 'Desayuno',     icono: '🌅', contenido: diaData?.desayuno, kcal: kcalPorTarea.desayuno, color: '#E8A020', bg: '#FFF8EC', border: '#F9CFA8', esEntreno: false },
+    { key: 'desayuno', hora: '7:30',  titulo: 'Desayuno', icono: '🌅', contenido: diaData?.desayuno, kcal: kcalPorTarea.desayuno, color: '#E8A020', bg: '#FFF8EC', border: '#F9CFA8', esEntreno: false },
     entreno ? { key: 'entreno', hora: '10:00', titulo: entreno?.tipo || 'Entrenamiento', icono: '🏋️', ejercicios: entreno?.ejercicios, kcal: entreno?.kcal_quemadas || 0, color: C.green, bg: C.greenPale, border: '#C8E8B0', esEntreno: true } : null,
-    { key: 'comida',   hora: '13:30', titulo: 'Comida',       icono: '☀️', contenido: diaData?.comida,   kcal: kcalPorTarea.comida,   snack: diaData?.snack,  color: C.orange, bg: C.orangePale, border: '#F9CFA8', esEntreno: false },
-    { key: 'cena',     hora: '20:30', titulo: 'Cena',         icono: '🌙', contenido: diaData?.cena,     kcal: kcalPorTarea.cena,     color: '#5B6FA8', bg: '#EEF0FA', border: '#C8CEEA', esEntreno: false },
+    { key: 'comida',   hora: '13:30', titulo: 'Comida',   icono: '☀️', contenido: diaData?.comida,   kcal: kcalPorTarea.comida, snack: diaData?.snack, color: C.orange, bg: C.orangePale, border: '#F9CFA8', esEntreno: false },
+    { key: 'cena',     hora: '20:30', titulo: 'Cena',     icono: '🌙', contenido: diaData?.cena,     kcal: kcalPorTarea.cena,   color: '#5B6FA8', bg: '#EEF0FA', border: '#C8CEEA', esEntreno: false },
   ].filter(Boolean);
 
   return (
@@ -397,18 +344,14 @@ export default function DailyTimeline({
             </div>
           </div>
 
-          {/* LiveCalorieBudget — Marcador Metabólico Vivo */}
+          {/* LiveCalorieBudget */}
           {esHoy && presupuestoBase > 0 && (
             <div style={{ marginTop: 14 }}>
-              <LiveCalorieBudget
-                presupuesto={presupuestoBase}
-                segmentos={segmentosBase}
-                modoRescate={modoRescate || false}
-              />
+              <LiveCalorieBudget presupuesto={presupuestoBase} segmentos={segmentosBase} modoRescate={modoRescate || false} />
             </div>
           )}
 
-          {/* Barra de progreso clásica si no hay presupuesto base configurado */}
+          {/* Barra progreso simple si no hay presupuesto */}
           {esHoy && !presupuestoBase && (
             <div style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -436,7 +379,7 @@ export default function DailyTimeline({
           </div>
         )}
 
-        {/* Celebración día perfecto */}
+        {/* Celebración */}
         {celebrado && progreso === 100 && esHoy && (
           <div style={{ background: `linear-gradient(135deg,${C.green},#3B6D11)`, padding: '14px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
             <span style={{ fontSize: 22, animation: 'pop 0.4s ease' }}>🎉</span>
@@ -501,7 +444,7 @@ export default function DailyTimeline({
                                 </button>
                               </div>
                             ) : (
-                              <div style={{ fontSize: 12, color: C.dark, lineHeight: 1.55, textDecoration: completado ? 'line-through' : 'none', textDecorationColor: C.mid }}>
+                              <div style={{ fontSize: 12, color: C.dark, lineHeight: 1.55, textDecorationLine: completado ? 'line-through' : 'none', textDecorationColor: completado ? C.mid : 'transparent' }}>
                                 {ev.contenido || '—'}
                               </div>
                             )}
@@ -542,10 +485,11 @@ export default function DailyTimeline({
               <QuickAddInput onEnviar={procesarQuickAdd} cargando={quickAddCargando} />
             )}
 
+            {/* Regenerar plan — solo visible, sin banner intrusivo */}
             {esHoy && (
               <div style={{ marginTop: 16, paddingBottom: 20, textAlign: 'center' }}>
-                <button onClick={onGenerarPlan} style={{ background: 'none', border: 'none', color: '#C0B8B0', fontSize: 11, cursor: 'pointer', fontFamily: font, textDecoration: 'underline' }}>
-                  Regenerar plan esta semana
+                <button onClick={onGenerarPlan} disabled={cargandoPlan} style={{ background: 'none', border: 'none', color: '#C0B8B0', fontSize: 11, cursor: 'pointer', fontFamily: font, textDecoration: 'underline' }}>
+                  {cargandoPlan ? 'Generando...' : 'Regenerar plan esta semana'}
                 </button>
               </div>
             )}

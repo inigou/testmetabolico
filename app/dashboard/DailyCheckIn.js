@@ -13,7 +13,6 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
 
 const hoy = () => new Date().toISOString().split('T')[0];
-
 const getColorEnergia = (v) => v >= 7 ? C.green : v >= 4 ? '#F9A825' : C.orange;
 const getColorSueno   = (v) => v >= 7 ? C.green : v >= 4 ? '#F9A825' : C.orange;
 const getColorEstres  = (v) => v <= 3 ? C.green : v <= 6 ? '#F9A825' : C.orange;
@@ -32,20 +31,28 @@ async function fetchCheckInHoy(email) {
   }
 }
 
-async function upsertCheckIn(email, energia, sueno, estres, completedTasks = {}) {
+// ── PATCH: actualiza solo energia/sueno/estres sin tocar completed_tasks ──
+async function upsertCheckIn(email, energia, sueno, estres) {
+  const fecha = hoy();
   try {
-    await fetch(`${SB_URL}/rest/v1/daily_logs`, {
-      method: 'POST',
-      headers: { ...sbH, Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({
-        email,
-        fecha: hoy(),
-        energia,
-        sueno,
-        estres,
-        completed_tasks: completedTasks,
-      }),
-    });
+    // Intentar PATCH primero — actualiza fila existente sin tocar otros campos
+    const resPatch = await fetch(
+      `${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${fecha}`,
+      {
+        method: 'PATCH',
+        headers: { ...sbH, Prefer: 'return=representation' },
+        body: JSON.stringify({ energia, sueno, estres }),
+      }
+    );
+    const patched = await resPatch.json();
+    // Si no había fila (array vacío), crear con POST
+    if (!Array.isArray(patched) || patched.length === 0) {
+      await fetch(`${SB_URL}/rest/v1/daily_logs`, {
+        method: 'POST',
+        headers: { ...sbH, Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ email, fecha, energia, sueno, estres }),
+      });
+    }
   } catch (e) {
     console.error('upsertCheckIn error:', e);
   }
@@ -55,52 +62,47 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
   const [energia, setEnergia] = useState(7);
   const [sueno, setSueno]     = useState(7);
   const [estres, setEstres]   = useState(4);
-  const [guardando, setGuardando]         = useState(false);
+  const [guardando, setGuardando]             = useState(false);
   const [cargandoWeather, setCargandoWeather] = useState(false);
-  const [weather, setWeather]             = useState(null);
-  const [yaHizoCheckIn, setYaHizoCheckIn] = useState(false);
-  const [inicializando, setInicializando] = useState(true);
+  const [weather, setWeather]                 = useState(null);
+  const [yaHizoCheckIn, setYaHizoCheckIn]     = useState(false);
+  const [inicializando, setInicializando]     = useState(true);
 
-  // ── Carga inicial: Supabase primero, localStorage como fallback ───
   useEffect(() => {
     if (!email) return;
-
     const init = async () => {
       setInicializando(true);
-
-      // 1. Intentar cargar desde Supabase (fuente de verdad)
       const logBD = await fetchCheckInHoy(email);
 
       if (logBD) {
-        // Ya hizo check-in hoy en cualquier dispositivo
-        setEnergia(logBD.energia || 7);
-        setSueno(logBD.sueno || 7);
-        setEstres(logBD.estres || 4);
-        setYaHizoCheckIn(true);
-
-        // Intentar recuperar weather del cache local (no se guarda en BD)
-        const cacheKey = `checkin_${email}_${hoy()}`;
-        try {
-          const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-          if (cached.weather) {
-            setWeather(cached.weather);
-            if (onWeatherUpdate) onWeatherUpdate(cached.weather);
-          } else {
-            // Regenerar weather con los datos de BD
+        const tieneValores = logBD.energia != null && logBD.sueno != null && logBD.estres != null;
+        if (tieneValores) {
+          setEnergia(logBD.energia);
+          setSueno(logBD.sueno);
+          setEstres(logBD.estres);
+          setYaHizoCheckIn(true);
+          const cacheKey = `checkin_${email}_${hoy()}`;
+          try {
+            const cached = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+            if (cached.weather) {
+              setWeather(cached.weather);
+              if (onWeatherUpdate) onWeatherUpdate(cached.weather);
+            } else {
+              await generarWeather(logBD.energia, logBD.sueno, logBD.estres, false);
+            }
+          } catch (e) {
             await generarWeather(logBD.energia, logBD.sueno, logBD.estres, false);
           }
-        } catch (e) {
-          await generarWeather(logBD.energia, logBD.sueno, logBD.estres, false);
+        } else {
+          setYaHizoCheckIn(false);
+          setWeather(null);
         }
       } else {
-        // No hay check-in hoy — limpiar estado por si acaso
         setYaHizoCheckIn(false);
         setWeather(null);
       }
-
       setInicializando(false);
     };
-
     init();
   }, [email]);
 
@@ -111,14 +113,13 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
       const objetivo = cfg.objetivoId || objetivoId || 'mantener';
       const scores = perfil || {};
       const allScores = [
-        { nombre: 'actividad física',    val: scores.efh_score },
+        { nombre: 'actividad física',     val: scores.efh_score },
         { nombre: 'composición corporal', val: scores.eco_score },
-        { nombre: 'nutrición',           val: scores.nut_score },
-        { nombre: 'descanso',            val: scores.des_score },
-        { nombre: 'vitalidad',           val: scores.vit_score },
+        { nombre: 'nutrición',            val: scores.nut_score },
+        { nombre: 'descanso',             val: scores.des_score },
+        { nombre: 'vitalidad',            val: scores.vit_score },
       ];
       const peorBloque = allScores.reduce((a, b) => (a.val || 0) < (b.val || 0) ? a : b).nombre;
-
       const res = await fetch('/api/weather', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -131,13 +132,9 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
       const weatherData = await res.json();
       setWeather(weatherData);
       if (onWeatherUpdate) onWeatherUpdate(weatherData);
-
-      // Guardar weather en cache local (no va a BD — es efímero)
       if (guardarCache) {
         try {
-          localStorage.setItem(`checkin_${email}_${hoy()}`, JSON.stringify({
-            energia: e, sueno: s, estres: st, weather: weatherData,
-          }));
+          localStorage.setItem(`checkin_${email}_${hoy()}`, JSON.stringify({ energia: e, sueno: s, estres: st, weather: weatherData }));
         } catch (err) { console.error(err); }
       }
     } catch (e) {
@@ -150,13 +147,8 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
   const guardar = async () => {
     if (!email || guardando) return;
     setGuardando(true);
-
-    // Guardar en Supabase (fuente de verdad)
-    await upsertCheckIn(email, energia, sueno, estres, completedTasksHoy || {});
-
-    // Generar weather
+    await upsertCheckIn(email, energia, sueno, estres);
     await generarWeather(energia, sueno, estres, true);
-
     setGuardando(false);
     setYaHizoCheckIn(true);
   };
@@ -179,9 +171,8 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-      {/* Weather card */}
       {weather && (
-        <div style={{ background: `linear-gradient(135deg, ${C.green}, #3B6D11)`, borderRadius: 16, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: `linear-gradient(135deg,${C.green},#3B6D11)`, borderRadius: 16, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Tu estado metabólico hoy</div>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: C.white, marginBottom: 8 }}>{weather.estado}</div>
@@ -191,7 +182,6 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
         </div>
       )}
 
-      {/* Check-in card */}
       <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
         <div style={{ background: C.orange, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -200,11 +190,9 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
               {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
             </div>
           </div>
-          {yaHizoCheckIn && (
-            <div style={{ background: 'rgba(255,255,255,0.2)', color: C.white, padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600 }}>
-              ✓ Completado
-            </div>
-          )}
+          <div style={{ background: 'rgba(255,255,255,0.2)', color: C.white, padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600 }}>
+            {yaHizoCheckIn ? '✓ Completado' : '⏳ Pendiente'}
+          </div>
         </div>
 
         <div style={{ padding: '20px' }}>
@@ -237,11 +225,8 @@ export default function DailyCheckIn({ email, perfil, objetivoId, onWeatherUpdat
             <button onClick={guardar} disabled={guardando} style={{
               width: '100%', marginTop: 20,
               background: guardando ? '#C8E8B0' : C.green,
-              color: C.white, border: 'none',
-              padding: '13px', borderRadius: 100,
-              fontSize: 13, fontWeight: 600,
-              cursor: guardando ? 'not-allowed' : 'pointer',
-              fontFamily: font,
+              color: C.white, border: 'none', padding: '13px', borderRadius: 100,
+              fontSize: 13, fontWeight: 600, cursor: guardando ? 'not-allowed' : 'pointer', fontFamily: font,
             }}>
               {guardando ? 'Analizando tu estado...' : 'Ver mi estado metabólico de hoy'}
             </button>
