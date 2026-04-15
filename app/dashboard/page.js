@@ -12,19 +12,35 @@ const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type':
 
 async function cargarPlanDB(email, objId) {
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/user_plans?email=eq.${encodeURIComponent(email)}&objetivo_id=eq.${encodeURIComponent(objId)}&select=plan_json`, { headers: sbH });
+    // Le pedimos que lo ordene por fecha para asegurarnos de coger siempre la versión más reciente
+    const res = await fetch(`${SB_URL}/rest/v1/user_plans?email=eq.${encodeURIComponent(email)}&objetivo_id=eq.${encodeURIComponent(objId)}&order=updated_at.desc&limit=1&select=plan_json`, { headers: sbH });
     const rows = await res.json();
     return rows?.[0]?.plan_json || null;
   } catch (e) { return null; }
 }
+
 async function guardarPlanDB(email, objId, plan) {
   try {
-    await fetch(`${SB_URL}/rest/v1/user_plans`, {
-      method: 'POST', headers: { ...sbH, Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ email, objetivo_id: objId, plan_json: plan, updated_at: new Date().toISOString() }),
-    });
-  } catch (e) { console.error(e); }
+    // 1. Preguntamos si ya hay un plan guardado para ti
+    const checkRes = await fetch(`${SB_URL}/rest/v1/user_plans?email=eq.${encodeURIComponent(email)}&objetivo_id=eq.${encodeURIComponent(objId)}&select=email`, { headers: sbH });
+    const rows = await checkRes.json();
+
+    if (rows && rows.length > 0) {
+      // 2A. Si existe, machacamos el antiguo con el nuevo (PATCH)
+      await fetch(`${SB_URL}/rest/v1/user_plans?email=eq.${encodeURIComponent(email)}&objetivo_id=eq.${encodeURIComponent(objId)}`, {
+        method: 'PATCH', headers: sbH,
+        body: JSON.stringify({ plan_json: plan, updated_at: new Date().toISOString() }),
+      });
+    } else {
+      // 2B. Si no existe, lo creamos (POST)
+      await fetch(`${SB_URL}/rest/v1/user_plans`, {
+        method: 'POST', headers: sbH,
+        body: JSON.stringify({ email, objetivo_id: objId, plan_json: plan, updated_at: new Date().toISOString() }),
+      });
+    }
+  } catch (e) { console.error('Error guardando plan en BD:', e); }
 }
+
 async function cargarLogsRecientes(email, dias = 35) {
   try {
     const desde = new Date(); desde.setDate(desde.getDate() - dias);

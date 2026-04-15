@@ -21,12 +21,28 @@ const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type':
 
 async function actualizarCompletedTasks(email, fecha, tasks) {
   try {
-    await fetch(`${SB_URL}/rest/v1/daily_logs`, {
-      method: 'POST',
-      headers: { ...sbH, Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ email, fecha, completed_tasks: tasks }),
-    });
-  } catch (e) { console.error(e); }
+    // 1. Preguntamos a Supabase: "¿Existe ya una fila para este email y esta fecha?"
+    const checkRes = await fetch(`${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${fecha}&select=fecha`, { headers: sbH });
+    const rows = await checkRes.json();
+
+    if (rows && rows.length > 0) {
+      // 2A. SÍ EXISTE (porque hiciste el check-in u otra comida) -> Hacemos PATCH
+      await fetch(`${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${fecha}`, {
+        method: 'PATCH',
+        headers: sbH,
+        body: JSON.stringify({ completed_tasks: tasks }),
+      });
+    } else {
+      // 2B. NO EXISTE (es un nuevo día y te saltaste el check-in) -> Hacemos POST
+      await fetch(`${SB_URL}/rest/v1/daily_logs`, {
+        method: 'POST',
+        headers: sbH,
+        body: JSON.stringify({ email, fecha, completed_tasks: tasks }),
+      });
+    }
+  } catch (e) { 
+    console.error('Error en el guardado inteligente de checks:', e); 
+  }
 }
 
 async function cargarLogDia(email, fecha) {
@@ -158,27 +174,36 @@ export default function DailyTimeline({
     if (onKcalConsumidas && esHoy) onKcalConsumidas(kcalConsumidas);
   }, [kcalConsumidas, esHoy]);
 
-  // Cargar checks de hoy desde localStorage
+  // ── EFECTO ÚNICO: EL CEREBRO DE CARGA (HOY Y AYER) ──
   useEffect(() => {
-    if (!email || !esHoy) return;
-    try {
-      const s = localStorage.getItem(`checks_${email}_${fechaActiva}`);
-      if (s) setChecks(JSON.parse(s));
-    } catch (e) {}
-  }, [email, fechaActiva]);
+    if (!email || !fechaActiva) return;
+    let montado = true;
 
-  // Cargar ayer desde Supabase
-  useEffect(() => {
-    if (!email || esHoy) return;
-    setCargandoAyer(true); setModoLectura(true);
-    cargarLogDia(email, fechaActiva).then(log => {
-      if (log?.completed_tasks) {
-        setChecks(typeof log.completed_tasks === 'string' ? JSON.parse(log.completed_tasks) : log.completed_tasks);
-      } else {
-        setChecks({ desayuno: false, comida: false, cena: false, entreno: false });
+    const iniciar = async () => {
+      if (!esHoy) { setCargandoAyer(true); setModoLectura(true); }
+      else setModoLectura(false);
+
+      // 1. Siempre descargamos la verdad absoluta desde Supabase primero
+      const log = await cargarLogDia(email, fechaActiva);
+      
+      if (montado) {
+        if (log?.completed_tasks) {
+          // Si Supabase tiene datos, mandan los de la nube
+          const tareasDB = typeof log.completed_tasks === 'string' ? JSON.parse(log.completed_tasks) : log.completed_tasks;
+          setChecks(tareasDB);
+        } else if (esHoy) {
+          // Si Supabase no tiene checks (nuevo día), miramos el localStorage por si acaso
+          const s = localStorage.getItem(`checks_${email}_${fechaActiva}`);
+          if (s) setChecks(JSON.parse(s));
+          else setChecks({ desayuno: false, comida: false, cena: false, entreno: false });
+        } else {
+          setChecks({ desayuno: false, comida: false, cena: false, entreno: false });
+        }
+        if (!esHoy) setCargandoAyer(false);
       }
-      setCargandoAyer(false);
-    });
+    };
+    iniciar();
+    return () => { montado = false; };
   }, [email, fechaActiva]);
 
   // Persistir checks hoy
@@ -235,6 +260,16 @@ export default function DailyTimeline({
         }
         setPlanSemanal(nuevo);
         try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: nuevo, fecha: Date.now() })); } catch (e) {}
+        
+        // GUARDADO EN SUPABASE AL SUSTITUIR (CON PATCH)
+        try {
+          await fetch(`${SB_URL}/rest/v1/user_plans?email=eq.${encodeURIComponent(email)}&objetivo_id=eq.${encodeURIComponent(objetivoId)}`, {
+            method: 'PATCH',
+            headers: sbH,
+            body: JSON.stringify({ plan_json: nuevo, updated_at: new Date().toISOString() }),
+          });
+        } catch (e) { console.error('Error guardando plan sustituido en BD:', e); }
+
         setSustitucionExito(eventoKey);
         setTimeout(() => setSustitucionExito(null), 2500);
       }
@@ -444,7 +479,7 @@ export default function DailyTimeline({
                                 </button>
                               </div>
                             ) : (
-                              <div style={{ fontSize: 12, color: C.dark, lineHeight: 1.55, textDecorationLine: completado ? 'line-through' : 'none', textDecorationColor: completado ? C.mid : 'transparent' }}>
+                              <div style={{ fontSize: 12, color: C.dark, lineHeight: 1.55, textDecoration: completado ? 'line-through' : 'none', textDecorationColor: C.mid }}>
                                 {ev.contenido || '—'}
                               </div>
                             )}
