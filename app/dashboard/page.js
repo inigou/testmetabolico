@@ -429,10 +429,19 @@ function KcalTracker({ planSemanal, completedTasks }) {
           // Estimación de macros a partir de kcal (ratios estándar por defecto)
           // Cuando el plan incluya macro_proteina, macro_carbs, macro_grasa → usarlos directamente
           const tieneProtObj = diaData.macro_proteina_g != null;
-          const pObj = tieneProtObj ? diaData.macro_proteina_g : Math.round((kcalObj * 0.30) / 4);
-          const cObj = tieneProtObj ? diaData.macro_carbs_g   : Math.round((kcalObj * 0.40) / 4);
-          const gObj = tieneProtObj ? diaData.macro_grasa_g   : Math.round((kcalObj * 0.30) / 9);
-          // Consumidas proporcional a % de kcal ingeridas
+          const ratios = {
+            'definicion_suave':     { p: 0.40, c: 0.30, g: 0.30 },
+            'definicion_agresiva':  { p: 0.40, c: 0.30, g: 0.30 },
+            'perdida_rapida':       { p: 0.45, c: 0.25, g: 0.30 },
+            'hipertrofia':          { p: 0.30, c: 0.45, g: 0.25 },
+            'hipertrofia_agresiva': { p: 0.30, c: 0.45, g: 0.25 },
+            'slow_aging':           { p: 0.35, c: 0.35, g: 0.30 },
+            'mantener':             { p: 0.30, c: 0.40, g: 0.30 },
+          };
+          const r = ratios[objetivoId] || ratios['mantener'];
+          const pObj = tieneProtObj ? diaData.macro_proteina_g : Math.round((kcalObj * r.p) / 4);
+          const cObj = tieneProtObj ? diaData.macro_carbs_g   : Math.round((kcalObj * r.c) / 4);
+          const gObj = tieneProtObj ? diaData.macro_grasa_g   : Math.round((kcalObj * r.g) / 9);
           const ratio = kcalObj > 0 ? kcalCons / kcalObj : 0;
           const pCons = Math.round(pObj * ratio);
           const cCons = Math.round(cObj * ratio);
@@ -981,7 +990,7 @@ export default function Dashboard() {
 
             {/* Centro de Mando Calórico */}
             {planSemanal && (
-              <KcalTracker planSemanal={planSemanal} completedTasks={completedTasksHoy} />
+              <KcalTracker planSemanal={planSemanal} completedTasks={completedTasksHoy} objetivoId={objetivoId} />
             )}
 
             <DailyTimeline
