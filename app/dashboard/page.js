@@ -471,13 +471,18 @@ export default function Dashboard() {
     if (!m?.cargando) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [mensajesChat]);
 
-  // Persistir chat del día en localStorage (solo mensajes completos, sin los cargando)
+  // Persistir chat del día en localStorage + Supabase (debounce 2s)
+  const chatSaveTimer = useRef(null);
   useEffect(() => {
     if (!email || mensajesChat.length === 0) return;
-    const hoy = new Date().toISOString().split('T')[0];
     const completos = mensajesChat.filter(m => !m.cargando && m.texto);
     if (completos.length === 0) return;
+    const hoy = new Date().toISOString().split('T')[0];
     try { localStorage.setItem(`chat_${email}_${hoy}`, JSON.stringify(completos)); } catch {}
+    if (chatSaveTimer.current) clearTimeout(chatSaveTimer.current);
+    chatSaveTimer.current = setTimeout(() => {
+      guardarDailyState(email, { chat_mensajes: completos }).catch(console.error);
+    }, 2000);
   }, [mensajesChat, email]);
 
   // Carga inicial
@@ -570,6 +575,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!checkinTexto || !planDia || mensajeProactivoGenerado || !ultimo) return;
     setMensajeProactivoGenerado(true);
+    guardarDailyState(email, { proactivo_ok: true }).catch(console.error);
     generarMensajeProactivo();
   }, [checkinTexto, planDia]);
 
@@ -620,26 +626,24 @@ export default function Dashboard() {
       if (cmd.accion === 'MOSTRAR_PLAN') setMostrarSemana(true);
       if (cmd.accion === 'ABRIR_CONFIG') setMostrarConfig(true);
 
-      // ── ACTUALIZAR_PROTOCOLOS — persiste en localStorage ────────
+      // ── ACTUALIZAR_PROTOCOLOS — localStorage + Supabase ──────────
       if (cmd.accion === 'ACTUALIZAR_PROTOCOLOS' && Array.isArray(cmd.nuevos_protocolos)) {
         setProtocolos(cmd.nuevos_protocolos);
-        try {
-          const hoy = new Date().toISOString().split('T')[0];
-          localStorage.setItem(`protocolos_${email}_${hoy}`, JSON.stringify(cmd.nuevos_protocolos));
-        } catch {}
+        const hoyP = new Date().toISOString().split('T')[0];
+        try { localStorage.setItem(`protocolos_${email}_${hoyP}`, JSON.stringify(cmd.nuevos_protocolos)); } catch {}
+        guardarDailyState(email, { protocolos: cmd.nuevos_protocolos }).catch(console.error);
       }
 
-      // ── GENERAR_REPORTE — persiste en localStorage ───────────────
+      // ── GENERAR_REPORTE — localStorage + Supabase ────────────────
       if (cmd.accion === 'GENERAR_REPORTE' && cmd.analisis) {
         const reporte = {
           analisis: cmd.analisis,
           adherencia: Array.isArray(cmd.adherencia) ? cmd.adherencia : ['gris','gris','gris','gris','gris','gris','gris'],
         };
         setReporteBanana(reporte);
-        try {
-          const hoy = new Date().toISOString().split('T')[0];
-          localStorage.setItem(`reporte_${email}_${hoy}`, JSON.stringify(reporte));
-        } catch {}
+        const hoyR = new Date().toISOString().split('T')[0];
+        try { localStorage.setItem(`reporte_${email}_${hoyR}`, JSON.stringify(reporte)); } catch {}
+        guardarDailyState(email, { reporte }).catch(console.error);
       }
 
       // ── MODIFICAR_PLATO — persiste en BD + localStorage ──────────
