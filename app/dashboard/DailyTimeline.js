@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import LiveCalorieBudget from './LiveCalorieBudget';
 
 const C = {
   bg: '#F7F4EE', green: '#5B9B3C', orange: '#E8621A', white: '#FFFFFF',
@@ -21,28 +20,12 @@ const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type':
 
 async function actualizarCompletedTasks(email, fecha, tasks) {
   try {
-    // 1. Preguntamos a Supabase: "¿Existe ya una fila para este email y esta fecha?"
-    const checkRes = await fetch(`${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${fecha}&select=fecha`, { headers: sbH });
-    const rows = await checkRes.json();
-
-    if (rows && rows.length > 0) {
-      // 2A. SÍ EXISTE (porque hiciste el check-in u otra comida) -> Hacemos PATCH
-      await fetch(`${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${fecha}`, {
-        method: 'PATCH',
-        headers: sbH,
-        body: JSON.stringify({ completed_tasks: tasks }),
-      });
-    } else {
-      // 2B. NO EXISTE (es un nuevo día y te saltaste el check-in) -> Hacemos POST
-      await fetch(`${SB_URL}/rest/v1/daily_logs`, {
-        method: 'POST',
-        headers: sbH,
-        body: JSON.stringify({ email, fecha, completed_tasks: tasks }),
-      });
-    }
-  } catch (e) { 
-    console.error('Error en el guardado inteligente de checks:', e); 
-  }
+    await fetch(`${SB_URL}/rest/v1/daily_logs`, {
+      method: 'POST',
+      headers: { ...sbH, Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({ email, fecha, completed_tasks: tasks }),
+    });
+  } catch (e) { console.error(e); }
 }
 
 async function cargarLogDia(email, fecha) {
@@ -117,12 +100,183 @@ function QuickAddInput({ onEnviar, cargando }) {
   );
 }
 
+
+// ── TareaCard — con auto-colapso reversible y highlight de siguiente acción ──
+function TareaCard({
+  ev, completado, esActual, esSiguiente, esSust, estaCarg, exito,
+  modoLectura, entreno, diaData, font, C,
+  onToggleCheck, onSustituir, onCancelarSust, onVerRutina,
+}) {
+  const [isExpanded, setIsExpanded] = useState(!completado);
+
+  // Cuando se completa → colapsar automáticamente
+  useEffect(() => {
+    if (completado) setIsExpanded(false);
+    else setIsExpanded(true);
+  }, [completado]);
+
+  // Borde highlight: siguiente acción pendiente usa turquesa
+  const borderColor = exito ? '#14B8A6'
+    : esSiguiente ? '#14B8A6'
+    : completado  ? '#C8E8B0'
+    : ev.border;
+
+  const boxShadow = esSiguiente && !completado
+    ? '0 0 0 2px #14B8A6, 0 0 0 4px rgba(20,184,166,0.15)'
+    : 'none';
+
+  return (
+    <div style={{ flex: 1,
+      background: exito ? '#F0FDF4' : completado ? '#F8FDF5' : ev.bg,
+      border: `1.5px solid ${borderColor}`,
+      borderRadius: 16, padding: '14px 16px',
+      opacity: completado && !isExpanded ? 0.65 : 1,
+      transition: 'all 0.25s ease',
+      position: 'relative', overflow: 'hidden',
+      boxShadow,
+      cursor: completado ? 'pointer' : 'default',
+    }}
+      onClick={completado && !esSust ? () => setIsExpanded(v => !v) : undefined}
+    >
+      {/* Línea de acento superior — solo en siguiente acción */}
+      {esSiguiente && !completado && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+          background: 'linear-gradient(90deg,#14B8A6,transparent)',
+          borderRadius: '16px 16px 0 0' }} />
+      )}
+      {esActual && !esSiguiente && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+          background: `linear-gradient(90deg,${ev.color},transparent)`,
+          borderRadius: '16px 16px 0 0' }} />
+      )}
+      {exito && (
+        <div style={{ position: 'absolute', top: 8, right: 44,
+          background: '#14B8A6', color: '#fff', fontSize: 9, fontWeight: 700,
+          padding: '2px 8px', borderRadius: 100, animation: 'pop 0.4s ease' }}>
+          ✓ Actualizado
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, marginRight: 8 }}>
+
+          {/* Header siempre visible */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isExpanded ? 6 : 0, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: ev.color,
+              textTransform: 'uppercase', letterSpacing: '0.06em' }}>{ev.titulo}</span>
+            <span style={{ fontSize: 9, color: '#9CA3AF' }}>{ev.hora}</span>
+            {ev.kcal > 0 && (
+              <span style={{ fontSize: 9,
+                background: completado ? '#E0F7F5' : `${ev.color}18`,
+                color: ev.esEntreno ? '#0D9488' : ev.color,
+                padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>
+                {ev.esEntreno ? `−${ev.kcal} kcal` : `${ev.kcal} kcal`}
+              </span>
+            )}
+            {esSiguiente && !completado && (
+              <span style={{ fontSize: 9, background: '#14B8A6', color: '#fff',
+                padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>siguiente →</span>
+            )}
+            {estaCarg && <span style={{ fontSize: 9, color: '#E8621A' }}>actualizando...</span>}
+            {/* Hint de expansión cuando está colapsado */}
+            {completado && (
+              <span style={{ fontSize: 9, color: '#9CA3AF', marginLeft: 'auto' }}>
+                {isExpanded ? '▲ colapsar' : '▼ ver detalle'}
+              </span>
+            )}
+          </div>
+
+          {/* Contenido — solo si isExpanded */}
+          {isExpanded && (
+            <>
+              {ev.esEntreno ? (
+                <div>
+                  <div style={{ marginBottom: 8 }}>
+                    {entreno?.ejercicios?.slice(0, 2).map((ej, j) => (
+                      <div key={j} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
+                        <span style={{ color: '#14B8A6', flexShrink: 0, fontSize: 10, marginTop: 2 }}>▸</span>
+                        <span style={{ fontSize: 12, color: '#111827',
+                          textDecoration: completado ? 'line-through' : 'none',
+                          textDecorationColor: '#9CA3AF' }}>{ej}</span>
+                      </div>
+                    ))}
+                    {entreno?.ejercicios?.length > 2 && (
+                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>
+                        +{entreno.ejercicios.length - 2} más
+                      </div>
+                    )}
+                  </div>
+                  {!completado && (
+                    <button onClick={e => { e.stopPropagation(); onVerRutina(); }}
+                      style={{ background: 'none', border: '1px solid #14B8A6', color: '#14B8A6',
+                        padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+                        cursor: 'pointer', fontFamily: font }}>
+                      Ver rutina completa →
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#111827', lineHeight: 1.55,
+                  textDecoration: completado ? 'line-through' : 'none',
+                  textDecorationColor: '#9CA3AF' }}>
+                  {ev.contenido || '—'}
+                </div>
+              )}
+
+              {ev.snack && !completado && (
+                <div style={{ marginTop: 8, padding: '5px 10px',
+                  background: 'rgba(255,255,255,0.6)', borderRadius: 8,
+                  fontSize: 11, color: '#6B7280' }}>
+                  🍎 Snack: {ev.snack} {diaData?.kcal_snack ? `· ${diaData.kcal_snack} kcal` : ''}
+                </div>
+              )}
+
+              {esSust && (
+                <SubstituteInput
+                  onEnviar={p => { onSustituir(ev.key, p); }}
+                  onCancelar={onCancelarSust}
+                  cargando={estaCarg}
+                  placeholder={ev.esEntreno ? 'Ej: Hoy prefiero surf 90 min...' : 'Ej: No tengo salmón, tengo pollo...'}
+                />
+              )}
+
+              {!completado && !esSust && !estaCarg && !modoLectura && (
+                <button onClick={e => { e.stopPropagation(); onSustituir(ev.key); }}
+                  style={{ marginTop: 8, background: 'none', border: 'none',
+                    color: '#9CA3AF', fontSize: 10, cursor: 'pointer',
+                    fontFamily: font, padding: '2px 0',
+                    display: 'flex', alignItems: 'center', gap: 4 }}>
+                  🔄 <span style={{ textDecoration: 'underline' }}>Adaptar</span>
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Check button — siempre visible, stopPropagation para no toggle expand */}
+        <button
+          onClick={e => { e.stopPropagation(); onToggleCheck(ev.key); }}
+          style={{ width: 32, height: 32, borderRadius: '50%',
+            border: `2px solid ${completado ? '#14B8A6' : C.light}`,
+            background: completado ? '#14B8A6' : C.white,
+            color: completado ? C.white : C.light,
+            fontSize: 14, cursor: modoLectura ? 'default' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, transition: 'all 0.25s ease',
+            opacity: modoLectura ? 0.6 : 1 }}>
+          ✓
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DailyTimeline({
   planSemanal, setPlanSemanal,
   email, objetivoId,
   onAbrirConfig, onTodoCompletado, onGenerarPlan, cargandoPlan, objetivo,
   onChecksChange, onGastoActividadChange,
-  presupuestoBase, onKcalConsumidas, modoRescate,
+  modoRescate,
 }) {
   const diaHoy       = getDiaHoy();
   const eventoActivo = getEventoActivo();
@@ -133,6 +287,7 @@ export default function DailyTimeline({
   const diaIndice   = diaDeStr(fechaActiva);
 
   const [checks, setChecks]                     = useState({ desayuno: false, comida: false, cena: false, entreno: false });
+  const [checksListos, setChecksListos]         = useState(false);
   const [modoLectura, setModoLectura]           = useState(false);
   const [cargandoAyer, setCargandoAyer]         = useState(false);
   const [verRutina, setVerRutina]               = useState(false);
@@ -148,67 +303,40 @@ export default function DailyTimeline({
   const diaData = planSemanal?.dieta?.[diaIndice];
   const entreno = planSemanal?.ejercicios?.[diaIndice];
 
-  // Segmentos para LiveCalorieBudget
-  const segmentosBase = [
-    { tipo: 'desayuno', kcal: diaData?.kcal_desayuno || 0, completado: checks.desayuno },
-    { tipo: 'comida',   kcal: diaData?.kcal_comida   || 0, completado: checks.comida   },
-    { tipo: 'cena',     kcal: diaData?.kcal_cena     || 0, completado: checks.cena     },
-    { tipo: 'snack',    kcal: diaData?.kcal_snack    || 0, completado: checks.comida   },
-    ...(entreno ? [{ tipo: 'entreno', kcal: entreno?.kcal_quemadas || 0, completado: checks.entreno }] : []),
-    ...(ingestaExtra > 0 ? [{ tipo: 'quickadd', kcal: ingestaExtra, completado: true }] : []),
-  ].filter(s => s.kcal > 0);
 
   const kcalPorTarea = {
     desayuno: diaData?.kcal_desayuno || 0,
     comida:   diaData?.kcal_comida   || 0,
     cena:     diaData?.kcal_cena     || 0,
   };
-  const kcalConsumidas = (
-    (checks.desayuno ? kcalPorTarea.desayuno : 0) +
-    (checks.comida   ? kcalPorTarea.comida   : 0) +
-    (checks.cena     ? kcalPorTarea.cena     : 0) +
-    ingestaExtra
-  );
 
-  useEffect(() => {
-    if (onKcalConsumidas && esHoy) onKcalConsumidas(kcalConsumidas);
-  }, [kcalConsumidas, esHoy]);
-
-  // ── EFECTO ÚNICO: EL CEREBRO DE CARGA (HOY Y AYER) ──
-  useEffect(() => {
-    if (!email || !fechaActiva) return;
-    let montado = true;
-
-    const iniciar = async () => {
-      if (!esHoy) { setCargandoAyer(true); setModoLectura(true); }
-      else setModoLectura(false);
-
-      // 1. Siempre descargamos la verdad absoluta desde Supabase primero
-      const log = await cargarLogDia(email, fechaActiva);
-      
-      if (montado) {
-        if (log?.completed_tasks) {
-          // Si Supabase tiene datos, mandan los de la nube
-          const tareasDB = typeof log.completed_tasks === 'string' ? JSON.parse(log.completed_tasks) : log.completed_tasks;
-          setChecks(tareasDB);
-        } else if (esHoy) {
-          // Si Supabase no tiene checks (nuevo día), miramos el localStorage por si acaso
-          const s = localStorage.getItem(`checks_${email}_${fechaActiva}`);
-          if (s) setChecks(JSON.parse(s));
-          else setChecks({ desayuno: false, comida: false, cena: false, entreno: false });
-        } else {
-          setChecks({ desayuno: false, comida: false, cena: false, entreno: false });
-        }
-        if (!esHoy) setCargandoAyer(false);
-      }
-    };
-    iniciar();
-    return () => { montado = false; };
-  }, [email, fechaActiva]);
-
-  // Persistir checks hoy
+  // Cargar checks de hoy desde localStorage
   useEffect(() => {
     if (!email || !esHoy) return;
+    try {
+      const s = localStorage.getItem(`checks_${email}_${fechaActiva}`);
+      if (s) setChecks(JSON.parse(s));
+    } catch (e) {}
+    setChecksListos(true); // solo persistir DESPUÉS de haber cargado
+  }, [email, fechaActiva]);
+
+  // Cargar ayer desde Supabase
+  useEffect(() => {
+    if (!email || esHoy) return;
+    setCargandoAyer(true); setModoLectura(true);
+    cargarLogDia(email, fechaActiva).then(log => {
+      if (log?.completed_tasks) {
+        setChecks(typeof log.completed_tasks === 'string' ? JSON.parse(log.completed_tasks) : log.completed_tasks);
+      } else {
+        setChecks({ desayuno: false, comida: false, cena: false, entreno: false });
+      }
+      setCargandoAyer(false);
+    });
+  }, [email, fechaActiva]);
+
+  // Persistir checks hoy — solo si ya se han cargado del localStorage
+  useEffect(() => {
+    if (!email || !esHoy || !checksListos) return;
     try { localStorage.setItem(`checks_${email}_${fechaActiva}`, JSON.stringify(checks)); } catch (e) {}
     actualizarCompletedTasks(email, fechaActiva, checks).catch(console.error);
     if (onChecksChange) onChecksChange(checks);
@@ -260,16 +388,6 @@ export default function DailyTimeline({
         }
         setPlanSemanal(nuevo);
         try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: nuevo, fecha: Date.now() })); } catch (e) {}
-        
-        // GUARDADO EN SUPABASE AL SUSTITUIR (CON PATCH)
-        try {
-          await fetch(`${SB_URL}/rest/v1/user_plans?email=eq.${encodeURIComponent(email)}&objetivo_id=eq.${encodeURIComponent(objetivoId)}`, {
-            method: 'PATCH',
-            headers: sbH,
-            body: JSON.stringify({ plan_json: nuevo, updated_at: new Date().toISOString() }),
-          });
-        } catch (e) { console.error('Error guardando plan sustituido en BD:', e); }
-
         setSustitucionExito(eventoKey);
         setTimeout(() => setSustitucionExito(null), 2500);
       }
@@ -379,25 +497,6 @@ export default function DailyTimeline({
             </div>
           </div>
 
-          {/* LiveCalorieBudget */}
-          {esHoy && presupuestoBase > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <LiveCalorieBudget presupuesto={presupuestoBase} segmentos={segmentosBase} modoRescate={modoRescate || false} />
-            </div>
-          )}
-
-          {/* Barra progreso simple si no hay presupuesto */}
-          {esHoy && !presupuestoBase && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>Progreso del día</span>
-                <span style={{ fontSize: 11, color: C.white, fontWeight: 700 }}>{totalChecks}/{totalItems}</span>
-              </div>
-              <div style={{ height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 100, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${progreso}%`, background: progreso === 100 ? '#C8E8B0' : C.white, borderRadius: 100, transition: 'width 0.5s ease' }} />
-              </div>
-            </div>
-          )}
 
           {modoLectura && (
             <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 10px', fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
@@ -430,88 +529,57 @@ export default function DailyTimeline({
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', left: 19, top: 20, bottom: 20, width: 2, background: C.light, borderRadius: 2 }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {eventos.map((ev, idx) => {
-                  const completado = checks[ev.key];
-                  const esActual   = ev.key === eventoActivo && !completado && esHoy;
-                  const esSust     = sustituyendo === ev.key;
-                  const estaCarg   = cargandoSustitucion === ev.key;
-                  const exito      = sustitucionExito === ev.key;
+                {(() => {
+                  // Primera tarea incompleta del día = "siguiente acción"
+                  const primeraPendiente = eventos.find(e => !checks[e.key])?.key || null;
+                  return eventos.map((ev, idx) => {
+                    const completado   = checks[ev.key];
+                    const esActual     = ev.key === eventoActivo && !completado && esHoy;
+                    const esSiguiente  = ev.key === primeraPendiente && esHoy;
+                    const esSust       = sustituyendo === ev.key;
+                    const estaCarg     = cargandoSustitucion === ev.key;
+                    const exito        = sustitucionExito === ev.key;
 
-                  return (
-                    <div key={ev.key} style={{ display: 'flex', gap: 16, paddingBottom: idx < eventos.length - 1 ? 16 : 0 }}>
-                      <div style={{ flexShrink: 0 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: completado ? C.green : esActual ? ev.color : C.white, border: `2px solid ${completado ? C.green : esActual ? ev.color : C.light}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: completado ? 16 : 18, boxShadow: esActual ? `0 0 0 4px ${ev.color}22` : 'none', transition: 'all 0.3s ease', zIndex: 1, position: 'relative' }}>
-                          {completado ? '✓' : ev.icono}
-                        </div>
-                      </div>
-
-                      <div style={{ flex: 1, background: exito ? '#F0FDF4' : completado ? '#F8FDF5' : ev.bg, border: `1.5px solid ${exito ? C.green : completado ? '#C8E8B0' : ev.border}`, borderRadius: 16, padding: '14px 16px', opacity: completado && modoLectura ? 0.85 : completado ? 0.75 : 1, transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
-                        {esActual && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,${ev.color},transparent)`, borderRadius: '16px 16px 0 0' }} />}
-                        {exito && <div style={{ position: 'absolute', top: 8, right: 44, background: C.green, color: C.white, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, animation: 'pop 0.4s ease' }}>✓ Actualizado</div>}
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ flex: 1, marginRight: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: ev.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{ev.titulo}</span>
-                              <span style={{ fontSize: 9, color: C.mid }}>{ev.hora}</span>
-                              {ev.kcal > 0 && (
-                                <span style={{ fontSize: 9, background: completado ? C.greenPale : `${ev.color}18`, color: ev.esEntreno ? '#3B6D11' : ev.color, padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>
-                                  {ev.esEntreno ? `−${ev.kcal} kcal` : `${ev.kcal} kcal`}
-                                </span>
-                              )}
-                              {esActual && <span style={{ fontSize: 9, background: ev.color, color: C.white, padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>ahora</span>}
-                              {estaCarg && <span style={{ fontSize: 9, color: C.orange }}>actualizando...</span>}
-                            </div>
-
-                            {ev.esEntreno ? (
-                              <div>
-                                <div style={{ marginBottom: 8 }}>
-                                  {entreno?.ejercicios?.slice(0, 2).map((ej, j) => (
-                                    <div key={j} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
-                                      <span style={{ color: C.green, flexShrink: 0, fontSize: 10, marginTop: 2 }}>▸</span>
-                                      <span style={{ fontSize: 12, color: C.dark, textDecoration: completado ? 'line-through' : 'none' }}>{ej}</span>
-                                    </div>
-                                  ))}
-                                  {entreno?.ejercicios?.length > 2 && <div style={{ fontSize: 11, color: C.mid }}>+{entreno.ejercicios.length - 2} más</div>}
-                                </div>
-                                <button onClick={() => setVerRutina(true)} style={{ background: 'none', border: `1px solid ${C.green}`, color: C.green, padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>
-                                  Ver rutina completa →
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: 12, color: C.dark, lineHeight: 1.55, textDecoration: completado ? 'line-through' : 'none', textDecorationColor: C.mid }}>
-                                {ev.contenido || '—'}
-                              </div>
-                            )}
-
-                            {ev.snack && !completado && (
-                              <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(255,255,255,0.6)', borderRadius: 8, fontSize: 11, color: C.mid }}>
-                                🍎 Snack: {ev.snack} {diaData?.kcal_snack ? `· ${diaData.kcal_snack} kcal` : ''}
-                              </div>
-                            )}
-
-                            {esSust && (
-                              <SubstituteInput
-                                onEnviar={(p) => sustituir(ev.key, p)}
-                                onCancelar={() => setSustituyendo(null)}
-                                cargando={estaCarg}
-                                placeholder={ev.esEntreno ? 'Ej: Hoy prefiero surf 90 min...' : 'Ej: No tengo salmón, tengo pollo...'}
-                              />
-                            )}
-
-                            {!completado && !esSust && !estaCarg && !modoLectura && (
-                              <button onClick={() => setSustituyendo(ev.key)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.mid, fontSize: 10, cursor: 'pointer', fontFamily: font, padding: '2px 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                🔄 <span style={{ textDecoration: 'underline' }}>Adaptar</span>
-                              </button>
-                            )}
+                    return (
+                      <div key={ev.key} style={{ display: 'flex', gap: 16, paddingBottom: idx < eventos.length - 1 ? 16 : 0 }}>
+                        {/* Icono lateral */}
+                        <div style={{ flexShrink: 0 }}>
+                          <div style={{
+                            width: 40, height: 40, borderRadius: '50%',
+                            background: completado ? '#14B8A6' : esSiguiente ? '#E0F7F5' : ev.bg,
+                            border: `2px solid ${completado ? '#14B8A6' : esSiguiente ? '#14B8A6' : C.light}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: completado ? 16 : 18,
+                            boxShadow: esSiguiente && !completado ? '0 0 0 3px rgba(20,184,166,0.2)' : 'none',
+                            transition: 'all 0.3s ease', zIndex: 1, position: 'relative',
+                          }}>
+                            {completado ? '✓' : ev.icono}
                           </div>
-
-                          <button onClick={() => toggleCheck(ev.key)} style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${completado ? C.green : C.light}`, background: completado ? C.green : C.white, color: completado ? C.white : C.light, fontSize: 14, cursor: modoLectura ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s ease', opacity: modoLectura ? 0.6 : 1 }}>✓</button>
                         </div>
+
+                        {/* Tarjeta */}
+                        <TareaCard
+                          ev={ev}
+                          completado={completado}
+                          esActual={esActual}
+                          esSiguiente={esSiguiente}
+                          esSust={esSust}
+                          estaCarg={estaCarg}
+                          exito={exito}
+                          modoLectura={modoLectura}
+                          entreno={entreno}
+                          diaData={diaData}
+                          font={font}
+                          C={C}
+                          onToggleCheck={toggleCheck}
+                          onSustituir={(key, peticion) => peticion ? sustituir(key, peticion) : setSustituyendo(key)}
+                          onCancelarSust={() => setSustituyendo(null)}
+                          onVerRutina={() => setVerRutina(true)}
+                        />
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
 
