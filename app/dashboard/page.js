@@ -155,7 +155,7 @@ function MicroCheckIn({ email, onCheckinChange, onBananaReactivo }) {
           </div>
           <input type="range" min="1" max="10" step="1" value={s.val}
             onChange={e => s.set(+e.target.value)}
-            style={{ width: '100%', accentColor: s.color, height: 4, cursor: 'pointer' }} />
+            style={{ width: '100%', accentColor: s.color, height: 4, cursor: 'pointer', touchAction: 'pan-x' }} />
         </div>
       ))}
     </div>
@@ -177,7 +177,7 @@ function BananaChat({ mensajes, input, setInput, cargando, onEnviar, chatEndRef,
       </div>
 
       {/* Mensajes */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: 8, background: C.panel, minHeight: inline ? 0 : 240, maxHeight: inline ? 'none' : 360 }}>
+      <div className="banana-messages" style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: 8, background: C.panel, minHeight: inline ? 0 : 240, maxHeight: inline ? 'none' : 360 }}>
         {mensajes.length === 0 && (
           <div style={{ textAlign: 'center', padding: '20px 0', color: C.mid, fontSize: 12 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🍌</div>
@@ -223,7 +223,7 @@ function BananaChat({ mensajes, input, setInput, cargando, onEnviar, chatEndRef,
         <input value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !cargando && input.trim() && onEnviar()}
           placeholder="Pregúntale a Banana..."
-          style={{ flex: 1, padding: '10px 14px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 13, fontFamily: font, outline: 'none', color: C.dark, background: C.white }} />
+          style={{ flex: 1, padding: '10px 14px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 16, fontFamily: font, outline: 'none', color: C.dark, background: C.white }} />
         <button onClick={() => !cargando && input.trim() && onEnviar()} disabled={cargando}
           style={{ background: cargando ? C.light : C.accent, color: C.white, border: 'none', padding: '10px 16px', borderRadius: 100, fontSize: 13, cursor: cargando ? 'not-allowed' : 'pointer', fontFamily: font, fontWeight: 700, flexShrink: 0 }}>
           {cargando ? '...' : '→'}
@@ -280,7 +280,7 @@ function SuperBotonEventos({ onCerrar, onEnviar }) {
             </div>
           </div>
           {eventoSel && <div style={{ background: C.orangeLt, border: '1px solid #F9CFA8', borderRadius: 9, padding: '8px 12px', marginBottom: 12, fontSize: 11, color: '#C05010', fontWeight: 600 }}>Estrategia: {eventoSel.protocolo}</div>}
-          <textarea value={detalle} onChange={e => setDetalle(e.target.value)} placeholder="Detalles opcionales..." style={{ width: '100%', height: 60, padding: '8px 12px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 12, fontFamily: font, resize: 'none', outline: 'none', background: C.bg, color: C.dark, boxSizing: 'border-box' }} />
+          <textarea value={detalle} onChange={e => setDetalle(e.target.value)} placeholder="Detalles opcionales..." style={{ width: '100%', height: 60, padding: '8px 12px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 16, fontFamily: font, resize: 'none', outline: 'none', background: C.bg, color: C.dark, boxSizing: 'border-box' }} />
         </div>
         <div style={{ padding: '12px 18px', borderTop: `1px solid ${C.light}`, background: C.white, flexShrink: 0 }}>
           <button onClick={() => seleccion && onEnviar(eventoSel, detalle, diaEvento)} disabled={!seleccion}
@@ -330,7 +330,7 @@ function KcalTracker({ planSemanal, completedTasks }) {
   const dash = circ * (pct / 100);
 
   return (
-    <div style={{
+    <div className="kcal-tracker-sticky" style={{
       position: 'sticky', top: 60, zIndex: 10,
       background: 'rgba(237,249,253,0.95)',
       backdropFilter: 'blur(8px)',
@@ -834,12 +834,19 @@ export default function Dashboard() {
       {mostrarSuperBoton && <SuperBotonEventos onCerrar={() => setMostrarSuperBoton(false)} onEnviar={activarEvento} />}
 
       {/* NAV */}
-      <nav style={{ background: C.accent, padding: '0 20px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
-        <span style={{ fontWeight: 900, fontSize: 18, color: C.white }}>🍌 <span style={{ color: 'rgba(255,255,255,0.9)' }}>my</span><span style={{ color: C.white }}>metaboliq</span></span>
+      <nav style={{ background: C.accent, padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
+        <span style={{ fontWeight: 900, fontSize: 17, color: C.white, flexShrink: 0 }}>🍌 <span style={{ color: 'rgba(255,255,255,0.9)' }}>my</span><span style={{ color: C.white }}>metaboliq</span></span>
         {datos && (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {nombreUsuario && <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>Hola, {nombreUsuario} 👋</span>}
-            {planSemanal && <button onClick={() => setMostrarSemana(true)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, padding: '6px 12px', borderRadius: 100, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>🛒 Semana</button>}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* Nombre solo en desktop */}
+            <span className="hide-mobile" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>{nombreUsuario && `Hola, ${nombreUsuario} 👋`}</span>
+            {/* Semana: icono en móvil, texto en desktop */}
+            {planSemanal && (
+              <button onClick={() => setMostrarSemana(true)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, padding: '6px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>
+                <span className="hide-mobile">🛒 Semana</span>
+                <span className="show-mobile">🛒</span>
+              </button>
+            )}
             <button onClick={() => setMostrarConfig(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: C.white, width: 32, height: 32, borderRadius: '50%', fontSize: 14, cursor: 'pointer' }}>⚙️</button>
             <button onClick={() => { setDatos(null); setEmail(''); setMensajesChat([]); setMensajeProactivoGenerado(false); setPlanSemanal(null); setStreak(0); setCheckinTexto(''); }} style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', background: 'none', border: 'none', cursor: 'pointer' }}>Salir</button>
           </div>
@@ -855,7 +862,7 @@ export default function Dashboard() {
           <p style={{ fontSize: 13, color: C.mid, marginBottom: 28 }}>¿Primera vez? <a href="/onboarding" style={{ color: C.accent, fontWeight: 700, textDecoration: 'none' }}>Empieza aquí →</a></p>
           <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto' }}>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscarDatos()} placeholder="tu@email.com"
-              style={{ flex: 1, padding: '12px 18px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 14, background: C.white, fontFamily: font, outline: 'none', color: C.dark }} />
+              style={{ flex: 1, padding: '12px 18px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 16, background: C.white, fontFamily: font, outline: 'none', color: C.dark }} />
             <button onClick={buscarDatos} disabled={cargando} style={{ background: C.accent, color: C.white, border: 'none', padding: '12px 22px', borderRadius: 100, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>{cargando ? '...' : 'Ver →'}</button>
           </div>
           {error && <p style={{ color: C.orange, fontSize: 13, marginTop: 14 }}>{error}</p>}

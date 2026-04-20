@@ -128,6 +128,45 @@ body {
   50%       { opacity: 0.4; }
 }
 
+/* ── Responsive helpers ── */
+.hide-mobile { display: inline; }
+.show-mobile { display: none; }
+
+@media (max-width: 767px) {
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: inline !important; }
+
+  /* Evitar zoom en inputs iOS — font-size mínimo 16px */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Reducir padding col-left en móvil */
+  .col-left {
+    padding: 12px 12px 0 !important;
+  }
+  .col-right {
+    padding: 0 12px 120px !important;
+  }
+
+  /* KcalTracker menos alto en móvil */
+  .kcal-tracker-sticky {
+    top: 56px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Chat Banana más compacto en móvil */
+  .banana-messages {
+    min-height: 160px !important;
+    max-height: 260px !important;
+  }
+
+  /* Botones nav más pequeños */
+  nav button, nav a {
+    min-width: 32px;
+  }
+}
+
 details > summary                    { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
 .chevron                             { transition: transform 0.3s ease; display: inline-block; }
