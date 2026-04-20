@@ -445,6 +445,7 @@ export default function Dashboard() {
   const [modoRescateActivo, setModoRescateActivo]     = useState(false);
   const [nombreUsuario, setNombreUsuario]             = useState('');
   const [checkinTexto, setCheckinTexto]               = useState('');
+  const [protocolos, setProtocolos]                   = useState(['🔥 Déficit activo', '💧 Hidratación prioritaria']);
 
   // Banana state
   const [mensajesChat, setMensajesChat]               = useState([]);
@@ -558,6 +559,9 @@ export default function Dashboard() {
     for (const cmd of comandos) {
       if (cmd.accion === 'MOSTRAR_PLAN') setMostrarSemana(true);
       if (cmd.accion === 'ABRIR_CONFIG') setMostrarConfig(true);
+      if (cmd.accion === 'ACTUALIZAR_PROTOCOLOS' && Array.isArray(cmd.nuevos_protocolos)) {
+        setProtocolos(cmd.nuevos_protocolos);
+      }
 
       if (cmd.accion === 'MODIFICAR_PLATO') {
         const { tipo, nuevo_texto, nuevas_kcal } = cmd;
@@ -849,6 +853,7 @@ export default function Dashboard() {
               presupuestoBase={presupuestoBase}
               onKcalConsumidas={() => {}}
               modoRescate={modoRescateActivo}
+              protocolos={protocolos}
             />
 
             {/* Super-botón */}

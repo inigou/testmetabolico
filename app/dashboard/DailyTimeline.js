@@ -277,6 +277,7 @@ export default function DailyTimeline({
   onAbrirConfig, onTodoCompletado, onGenerarPlan, cargandoPlan, objetivo,
   onChecksChange, onGastoActividadChange,
   modoRescate,
+  protocolos = [],   // chips de Banana — array de strings con emoji
 }) {
   const diaHoy       = getDiaHoy();
   const eventoActivo = getEventoActivo();
@@ -489,6 +490,27 @@ export default function DailyTimeline({
                 {modoLectura ? '📖 Vista de ayer' : 'Plan de hoy'}
               </div>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: C.white }}>{DIAS_FULL[diaIndice]}</div>
+
+              {/* Protocolos activos de Banana */}
+              {esHoy && protocolos.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                  {protocolos.map((p, i) => (
+                    <span key={i} style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      background: 'rgba(255,255,255,0.15)',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                      color: C.white,
+                      borderRadius: 100,
+                      padding: '3px 10px',
+                      fontSize: 10, fontWeight: 600,
+                      backdropFilter: 'blur(4px)',
+                      letterSpacing: '0.02em',
+                    }}>
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button onClick={() => { setOffsetDia(-1); setModoLectura(true); }} style={{ background: offsetDia === -1 ? C.white : 'rgba(255,255,255,0.2)', border: 'none', color: offsetDia === -1 ? C.green : C.white, padding: '6px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>← Ayer</button>

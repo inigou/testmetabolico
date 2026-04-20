@@ -172,7 +172,17 @@ El campo "nuevas_kcal" debe ser un número entero estimado realista.
 3. Abrir configuración:
 { "accion": "ABRIR_CONFIG" }
 
-REGLA CRÍTICA: Si el usuario pide cambiar cualquier comida o entreno, el comando MODIFICAR_PLATO es OBLIGATORIO — no solo describas el cambio en texto, también incluye el comando para que el Timeline se actualice.
+4. Actualizar los protocolos activos del día (chips visibles en el Timeline):
+{ "accion": "ACTUALIZAR_PROTOCOLOS", "nuevos_protocolos": ["🔥 Emoji + texto corto", "💧 Otro protocolo"] }
+CUÁNDO usarlo: cuando la estrategia del día cambie. Ejemplos que DEBEN dispararlo:
+- El usuario pasa de déficit a mantenimiento → actualiza los chips
+- Recomiendas ayuno, hidratación extra, descanso activo, o cualquier pauta del día
+- El usuario tiene un evento especial que cambia las reglas del día
+- Se modifica el objetivo calórico o de macros
+Los protocolos son máximo 4, texto muy corto (2-4 palabras), siempre con emoji al inicio.
+
+REGLA CRÍTICA 1: Si el usuario pide cambiar cualquier comida o entreno, el comando MODIFICAR_PLATO es OBLIGATORIO.
+REGLA CRÍTICA 2: Si detectas un cambio de estrategia o recomiendas una pauta especial, ACTUALIZAR_PROTOCOLOS es OBLIGATORIO.
 Si no hay comandos, deja el array vacío. NUNCA escribas texto fuera del JSON.`;
 
     const userContent = esCheckinReactivo
