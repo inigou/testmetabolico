@@ -333,7 +333,7 @@ function SuperBotonEventos({ onCerrar, onEnviar }) {
 
 
 // ── KcalTracker — Centro de Mando Calórico ──────────────────────────
-function KcalTracker({ planSemanal, completedTasks }) {
+function KcalTracker({ planSemanal, completedTasks, objetivoId }) {
   const getDiaHoy = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
   const diaIdx    = getDiaHoy();
   const diaData   = planSemanal?.dieta?.[diaIdx];
