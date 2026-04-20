@@ -878,6 +878,42 @@ export default function Dashboard() {
                 <span className="chevron" style={{ fontSize: 14, color: C.mid }}>▾</span>
               </summary>
               <div style={{ padding: '14px', background: C.bg, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                {/* Potencial de mejora — siempre visible */}
+                <div style={{ background: C.white, borderRadius: 12, padding: 16, border: `1px solid ${C.light}` }}>
+                  <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>🚀 Tu potencial de mejora</div>
+                  {[
+                    { icon: '⚡', label: 'Actividad física',    val: ultimo.efh_score, anos: 3 },
+                    { icon: '🏋️', label: 'Composición corporal',val: ultimo.eco_score, anos: 4 },
+                    { icon: '🥗', label: 'Nutrición',           val: ultimo.nut_score, anos: 2 },
+                    { icon: '😴', label: 'Descanso',            val: ultimo.des_score, anos: 3 },
+                    { icon: '🧠', label: 'Vitalidad',           val: ultimo.vit_score, anos: 2 },
+                  ].sort((a, b) => a.val - b.val).map((s, i) => {
+                    const col = s.val >= 65 ? C.accent : s.val >= 50 ? '#F9A825' : C.orange;
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+                        <span style={{ fontSize: 14, flexShrink: 0 }}>{s.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <span style={{ fontSize: 11, color: C.dark }}>{s.label}</span>
+                            <span style={{ fontSize: 11, color: col, fontWeight: 700 }}>{s.val}/100</span>
+                          </div>
+                          <div style={{ height: 5, background: C.light, borderRadius: 100, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${s.val}%`, background: col, borderRadius: 100, transition: 'width 0.6s ease' }} />
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 9, color: col, fontWeight: 700, background: `${col}15`, border: `1px solid ${col}44`, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                          -{s.anos} años
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{ marginTop: 4, padding: '8px 12px', background: C.panel, borderRadius: 8, fontSize: 11, color: C.mid, lineHeight: 1.5 }}>
+                    💡 ICM potencial: <strong style={{ color: C.accent }}>{Math.min(100, Math.round(ultimo.icm_total * 1.18))}/100</strong> mejorando tus 2 bloques más bajos
+                  </div>
+                </div>
+
+                {/* Evolución — solo si hay más de 1 test */}
                 {datos.length > 1 && (
                   <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, borderRadius: 12, padding: 16 }}>
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>Evolución del ICM</div>
@@ -889,20 +925,33 @@ export default function Dashboard() {
                     </svg>
                   </div>
                 )}
+
+                {/* Historial — solo si hay más de 1 test */}
                 {datos.length > 1 && (
                   <div style={{ background: C.white, borderRadius: 12, padding: 14, border: `1px solid ${C.light}` }}>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, color: C.dark, marginBottom: 12 }}>Historial</div>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, color: C.dark, marginBottom: 12 }}>Historial de tests</div>
                     {[...datos].reverse().map((t, i) => (
                       <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < datos.length - 1 ? `1px solid ${C.light}` : 'none' }}>
                         <div>
                           <div style={{ fontSize: 12, color: C.dark }}>{formatFecha(t.fecha)}{i===0 && <span style={{ fontSize: 9, background: C.greenPale, color: C.accent, padding: '1px 7px', borderRadius: 100, marginLeft: 6 }}>Último</span>}</div>
-                          <div style={{ fontSize: 10, color: C.mid }}>Edad metabólica: {t.edad_metabolica}</div>
+                          <div style={{ fontSize: 10, color: C.mid }}>Edad metabólica: {t.edad_metabolica} años</div>
                         </div>
                         <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: icmColor(t.icm_total) }}>{t.icm_total}<span style={{ fontSize: 9, color: C.mid }}>/100</span></div>
                       </div>
                     ))}
                   </div>
                 )}
+
+                {/* CTA segundo test — solo si tiene 1 */}
+                {datos.length === 1 && (
+                  <div style={{ background: C.greenPale, border: `1px solid ${C.light}`, borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>📅</div>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, color: C.dark, marginBottom: 4 }}>Vuelve en 30 días</div>
+                    <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6, marginBottom: 12 }}>Cuando hagas tu segundo test verás aquí tu evolución y progreso del ICM.</div>
+                    <a href="/bot" style={{ display: 'inline-block', background: C.accent, color: C.white, padding: '8px 20px', borderRadius: 100, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Hacer nuevo test →</a>
+                  </div>
+                )}
+
               </div>
             </details>
 
