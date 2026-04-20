@@ -11,18 +11,22 @@ const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type':
 
 // ── Paleta Tech Luminosa ─────────────────────────────────────────────
 const C = {
-  bg:       '#F0F8FA',
-  panel:    '#EDF9FD',
+  bg:       '#ffffff',
+  panel:    '#F0F8FA',
   dark:     '#111827',
   mid:      '#4B5563',
-  slate:    '#1E3A8A',
-  accent:   '#14B8A6',
-  accentDk: '#0D9488',
+  accent:   '#18778f',
+  accentDk: '#0D5F73',
+  accentLt: '#D1ECF1',
   orange:   '#E8621A',
   orangeLt: '#FDF0E8',
   light:    '#D1ECF1',
   white:    '#FFFFFF',
-  greenPale:'#E0F7F5',
+  greenPale:'#D1ECF1',
+  // columna izquierda
+  leftBg:   '#0F2A35',
+  leftPanel:'#163545',
+  slate:    '#163545',
 };
 const font = "'Trebuchet MS', Verdana, Geneva, sans-serif";
 
@@ -45,6 +49,40 @@ async function guardarPlanDB(email, objId, plan) {
     }
   } catch (e) { console.error(e); }
 }
+async function cargarDailyState(email) {
+  try {
+    const hoy = new Date().toISOString().split('T')[0];
+    const res = await fetch(
+      `${SB_URL}/rest/v1/daily_state?email=eq.${encodeURIComponent(email)}&fecha=eq.${hoy}&limit=1`,
+      { headers: sbH }
+    );
+    const rows = await res.json();
+    return rows?.[0] || null;
+  } catch { return null; }
+}
+async function guardarDailyState(email, campos) {
+  const hoy = new Date().toISOString().split('T')[0];
+  try {
+    const check = await fetch(
+      `${SB_URL}/rest/v1/daily_state?email=eq.${encodeURIComponent(email)}&fecha=eq.${hoy}`,
+      { headers: sbH }
+    );
+    const rows = await check.json();
+    if (rows?.length > 0) {
+      await fetch(
+        `${SB_URL}/rest/v1/daily_state?email=eq.${encodeURIComponent(email)}&fecha=eq.${hoy}`,
+        { method: 'PATCH', headers: sbH, body: JSON.stringify({ ...campos, updated_at: new Date().toISOString() }) }
+      );
+    } else {
+      await fetch(`${SB_URL}/rest/v1/daily_state`, {
+        method: 'POST',
+        headers: { ...sbH, Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ email, fecha: hoy, ...campos, updated_at: new Date().toISOString() }),
+      });
+    }
+  } catch (e) { console.error('guardarDailyState error:', e); }
+}
+
 async function cargarLogsRecientes(email, dias = 35) {
   try {
     const desde = new Date(); desde.setDate(desde.getDate() - dias);
@@ -540,6 +578,17 @@ export default function Dashboard() {
         }
       } catch {}
 
+      // Cargar daily_state desde Supabase (fuente de verdad cross-device)
+      try {
+        const ds = await cargarDailyState(email);
+        if (ds) {
+          if (ds.protocolos?.length)    setProtocolos(ds.protocolos);
+          if (ds.reporte?.analisis)     setReporteBanana(ds.reporte);
+          if (ds.chat_mensajes?.length) setMensajesChat(ds.chat_mensajes);
+          if (ds.proactivo_ok)          setMensajeProactivoGenerado(true);
+        }
+      } catch {}
+
       // Check onboarding
       try {
         const uRes = await fetch(`${SB_URL}/rest/v1/usuarios?email=eq.${encodeURIComponent(email)}&select=onboarding_completed,nombre&limit=1`, { headers: sbH });
@@ -575,9 +624,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (!checkinTexto || !planDia || mensajeProactivoGenerado || !ultimo) return;
     setMensajeProactivoGenerado(true);
-    guardarDailyState(email, { proactivo_ok: true }).catch(console.error);
+    if (email) guardarDailyState(email, { proactivo_ok: true }).catch(console.error);
     generarMensajeProactivo();
-  }, [checkinTexto, planDia]);
+    }, [checkinTexto, planDia]);
 
   // ── buildCoachPayload ────────────────────────────────────────────
   const buildCoachPayload = useCallback((extras = {}) => {
@@ -871,10 +920,10 @@ export default function Dashboard() {
 
       {/* DASHBOARD — Layout híbrido */}
       {datos && ultimo && (
-        <div className="dashboard-grid">
+        <div className="dashboard-grid" style={{ background: '#ffffff' }}>
 
           {/* ── COLUMNA IZQUIERDA: Banana + Check-in + Hero ICM ── */}
-          <div className="col-left">
+          <div className="col-left" style={{ background: '#0F2A35' }}>
 
             {/* Hero ICM compacto */}
             <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, borderRadius: 16, padding: '16px', marginBottom: 12 }}>
@@ -928,7 +977,7 @@ export default function Dashboard() {
           </div>
 
           {/* ── COLUMNA DERECHA: Timeline + acciones ── */}
-          <div className="col-right">
+          <div className="col-right" style={{ background: '#ffffff' }}>
 
             {/* Centro de Mando Calórico */}
             {planSemanal && (

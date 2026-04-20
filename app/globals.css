@@ -1,20 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F0F8FA;
+  --background: #ffffff;
   --foreground: #111827;
 
-  /* Paleta Tech Luminosa — mymetaboliq Fase 2 */
-  --bg:        #F0F8FA;
-  --panel:     #EDF9FD;
+  /* Paleta Deep Ocean — mymetaboliq Fase 3 */
+  --bg:        #ffffff;
+  --panel:     #F0F8FA;
   --dark:      #111827;
-  --mid:       #1E3A8A;
-  --accent:    #14B8A6;
-  --accent-dk: #0D9488;
+  --mid:       #4B5563;
+  --accent:    #18778f;
+  --accent-dk: #0D5F73;
+  --accent-lt: #D1ECF1;
   --orange:    #E8621A;
   --orange-lt: #FDF0E8;
   --light:     #D1ECF1;
   --white:     #FFFFFF;
+
+  /* Paleta izquierda oscura */
+  --col-left-bg:    #0F2A35;
+  --col-left-panel: #163545;
+  --col-left-card:  #18778f;
+  --text-on-dark:   rgba(255,255,255,0.88);
+  --text-on-dark-m: rgba(255,255,255,0.5);
+
+  /* Timeline boxes */
+  --tl-box-bg:      #18778f;
+  --tl-box-border:  #0D5F73;
+  --tl-header-bg:   #18778f;
 }
 
 @theme inline {
@@ -59,16 +72,18 @@ body {
   }
   .col-left {
     position: sticky;
-    top: 60px;
-    height: calc(100dvh - 60px);
+    top: 56px;
+    height: calc(100dvh - 56px);
     overflow-y: auto;
-    border-right: 1px solid var(--light);
-    padding: 20px 16px 24px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding: 16px 16px 24px;
+    background: #0F2A35;
   }
   .col-right {
-    height: calc(100dvh - 60px);
+    height: calc(100dvh - 56px);
     overflow-y: auto;
-    padding: 20px 20px 40px;
+    padding: 16px 20px 40px;
+    background: #ffffff;
   }
 }
 

@@ -2,9 +2,24 @@
 import { useState, useEffect } from 'react';
 
 const C = {
-  bg: '#F7F4EE', green: '#5B9B3C', orange: '#E8621A', white: '#FFFFFF',
-  dark: '#1A1A1A', mid: '#6B6B6B', light: '#E8E4DC',
-  greenPale: '#EBF5E4', orangePale: '#FDF0E8',
+  bg:        '#ffffff',
+  panel:     '#F0F8FA',
+  accent:    '#18778f',
+  accentDk:  '#0D5F73',
+  accentLt:  '#D1ECF1',
+  orange:    '#E8621A',
+  white:     '#FFFFFF',
+  dark:      '#111827',
+  mid:       '#4B5563',
+  light:     '#D1ECF1',
+  // columna izquierda oscura
+  leftBg:    '#0F2A35',
+  leftPanel: '#163545',
+  // timeline boxes
+  boxBg:     '#18778f',
+  green:     '#18778f',
+  greenPale: '#D1ECF1',
+  orangePale:'#FDF0E8',
 };
 const font = 'Trebuchet MS, Verdana, sans-serif';
 const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -75,8 +90,8 @@ function QuickAddInput({ onEnviar, cargando }) {
   };
 
   return (
-    <div style={{ marginTop: 20, padding: '14px 16px', background: C.white, borderRadius: 14, border: `1px solid ${C.light}` }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.dark, marginBottom: 4 }}>⚡ Entrada rápida</div>
+    <div style={{ marginTop: 20, padding: '14px 16px', background: '#F0F8FA', borderRadius: 14, border: `1.5px dashed ${C.accentLt}` }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 4 }}>⚡ Entrada rápida</div>
       <div style={{ fontSize: 11, color: C.mid, marginBottom: 10, lineHeight: 1.5 }}>
         ¿Algo extra hoy? Escríbelo y lo añadimos al contador calórico
         <br /><span style={{ fontSize: 10, color: '#C0B8B0' }}>Ej: "2 copas de vino", "Caminata extra 30 min"</span>
@@ -85,9 +100,9 @@ function QuickAddInput({ onEnviar, cargando }) {
         <input value={val} onChange={e => setVal(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && enviar()}
           placeholder="¿Qué has tomado o hecho extra?"
-          style={{ flex: 1, padding: '9px 14px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 12, fontFamily: font, outline: 'none', color: C.dark, background: C.bg }} />
+          style={{ flex: 1, padding: '9px 14px', border: `1.5px solid ${C.accentLt}`, borderRadius: 100, fontSize: 16, fontFamily: font, outline: 'none', color: C.dark, background: '#fff' }} />
         <button onClick={enviar} disabled={cargando || !val.trim()}
-          style={{ background: cargando ? C.light : C.green, color: C.white, border: 'none', padding: '9px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: cargando ? 'not-allowed' : 'pointer', fontFamily: font, flexShrink: 0 }}>
+          style={{ background: cargando ? C.accentLt : C.accent, color: C.white, border: 'none', padding: '9px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: cargando ? 'not-allowed' : 'pointer', fontFamily: font, flexShrink: 0 }}>
           {cargando ? '...' : 'Añadir'}
         </button>
       </div>
@@ -115,21 +130,21 @@ function TareaCard({
     else setIsExpanded(true);
   }, [completado]);
 
-  // Borde highlight: siguiente acción pendiente usa turquesa
-  const borderColor = exito ? '#14B8A6'
-    : esSiguiente ? '#14B8A6'
-    : completado  ? '#C8E8B0'
+  // Borde: siguiente más sólido, completado semitransparente
+  const borderColor = exito ? '#0D5F73'
+    : esSiguiente ? '#0D5F73'
+    : completado  ? '#0D5F73'
     : ev.border;
 
   const boxShadow = esSiguiente && !completado
-    ? '0 0 0 2px #14B8A6, 0 0 0 4px rgba(20,184,166,0.15)'
-    : 'none';
+    ? '0 4px 16px rgba(24,119,143,0.3)'
+    : '0 2px 8px rgba(24,119,143,0.1)';
 
   return (
     <div style={{ flex: 1,
-      background: exito ? '#F0FDF4' : completado ? '#F8FDF5' : ev.bg,
+      background: completado ? `${ev.bg}BB` : ev.bg,
       border: `1.5px solid ${borderColor}`,
-      borderRadius: 16, padding: '14px 16px',
+      borderRadius: 14, padding: '12px 14px',
       opacity: completado && !isExpanded ? 0.65 : 1,
       transition: 'all 0.25s ease',
       position: 'relative', overflow: 'hidden',
@@ -141,7 +156,7 @@ function TareaCard({
       {/* Línea de acento superior — solo en siguiente acción */}
       {esSiguiente && !completado && (
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-          background: 'linear-gradient(90deg,#14B8A6,transparent)',
+          background: 'linear-gradient(90deg,rgba(255,255,255,0.4),transparent)',
           borderRadius: '16px 16px 0 0' }} />
       )}
       {esActual && !esSiguiente && (
@@ -162,19 +177,19 @@ function TareaCard({
 
           {/* Header siempre visible */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isExpanded ? 6 : 0, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: ev.color,
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.9)',
               textTransform: 'uppercase', letterSpacing: '0.06em' }}>{ev.titulo}</span>
-            <span style={{ fontSize: 9, color: '#9CA3AF' }}>{ev.hora}</span>
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)' }}>{ev.hora}</span>
             {ev.kcal > 0 && (
               <span style={{ fontSize: 9,
-                background: completado ? '#E0F7F5' : `${ev.color}18`,
-                color: ev.esEntreno ? '#0D9488' : ev.color,
+                background: ev.esEntreno ? 'rgba(255,255,255,0.18)' : 'rgba(232,98,26,0.3)',
+                color: ev.esEntreno ? '#fff' : '#FFB385',
                 padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>
                 {ev.esEntreno ? `−${ev.kcal} kcal` : `${ev.kcal} kcal`}
               </span>
             )}
             {esSiguiente && !completado && (
-              <span style={{ fontSize: 9, background: '#14B8A6', color: '#fff',
+              <span style={{ fontSize: 9, background: '#fff', color: '#18778f',
                 padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>siguiente →</span>
             )}
             {estaCarg && <span style={{ fontSize: 9, color: '#E8621A' }}>actualizando...</span>}
@@ -194,7 +209,7 @@ function TareaCard({
                   <div style={{ marginBottom: 8 }}>
                     {entreno?.ejercicios?.slice(0, 2).map((ej, j) => (
                       <div key={j} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
-                        <span style={{ color: '#14B8A6', flexShrink: 0, fontSize: 10, marginTop: 2 }}>▸</span>
+                        <span style={{ color: 'rgba(255,255,255,0.6)', flexShrink: 0, fontSize: 10, marginTop: 2 }}>▸</span>
                         <span style={{ fontSize: 12, color: '#111827',
                           textDecoration: completado ? 'line-through' : 'none',
                           textDecorationColor: '#9CA3AF' }}>{ej}</span>
@@ -208,7 +223,7 @@ function TareaCard({
                   </div>
                   {!completado && (
                     <button onClick={e => { e.stopPropagation(); onVerRutina(); }}
-                      style={{ background: 'none', border: '1px solid #14B8A6', color: '#14B8A6',
+                      style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.4)', color: '#fff',
                         padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600,
                         cursor: 'pointer', fontFamily: font }}>
                       Ver rutina completa →
@@ -216,17 +231,17 @@ function TareaCard({
                   )}
                 </div>
               ) : (
-                <div style={{ fontSize: 12, color: '#111827', lineHeight: 1.55,
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.55,
                   textDecoration: completado ? 'line-through' : 'none',
-                  textDecorationColor: '#9CA3AF' }}>
+                  textDecorationColor: 'rgba(255,255,255,0.4)' }}>
                   {ev.contenido || '—'}
                 </div>
               )}
 
               {ev.snack && !completado && (
                 <div style={{ marginTop: 8, padding: '5px 10px',
-                  background: 'rgba(255,255,255,0.6)', borderRadius: 8,
-                  fontSize: 11, color: '#6B7280' }}>
+                  background: 'rgba(0,0,0,0.15)', borderRadius: 8,
+                  fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>
                   🍎 Snack: {ev.snack} {diaData?.kcal_snack ? `· ${diaData.kcal_snack} kcal` : ''}
                 </div>
               )}
@@ -243,7 +258,7 @@ function TareaCard({
               {!completado && !esSust && !estaCarg && !modoLectura && (
                 <button onClick={e => { e.stopPropagation(); onSustituir(ev.key); }}
                   style={{ marginTop: 8, background: 'none', border: 'none',
-                    color: '#9CA3AF', fontSize: 10, cursor: 'pointer',
+                    color: 'rgba(255,255,255,0.4)', fontSize: 10, cursor: 'pointer',
                     fontFamily: font, padding: '2px 0',
                     display: 'flex', alignItems: 'center', gap: 4 }}>
                   🔄 <span style={{ textDecoration: 'underline' }}>Adaptar</span>
@@ -257,9 +272,9 @@ function TareaCard({
         <button
           onClick={e => { e.stopPropagation(); onToggleCheck(ev.key); }}
           style={{ width: 32, height: 32, borderRadius: '50%',
-            border: `2px solid ${completado ? '#14B8A6' : C.light}`,
-            background: completado ? '#14B8A6' : C.white,
-            color: completado ? C.white : C.light,
+            border: `2px solid ${completado ? '#fff' : 'rgba(255,255,255,0.3)'}`,
+            background: completado ? '#fff' : 'rgba(255,255,255,0.1)',
+            color: completado ? '#18778f' : 'rgba(255,255,255,0.3)',
             fontSize: 14, cursor: modoLectura ? 'default' : 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0, transition: 'all 0.25s ease',
@@ -421,7 +436,7 @@ export default function DailyTimeline({
   if (!planSemanal) {
     return (
       <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
-        <div style={{ background: C.green, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: C.accent, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, color: C.white }}>Plan de hoy</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>{DIAS_FULL[diaHoy]}</div>
@@ -446,10 +461,10 @@ export default function DailyTimeline({
   // ── Eventos del timeline ─────────────────────────────────────────
   // NOTA: ya no hay bloque "planTieneKcal" — el plan se muestra siempre
   const eventos = [
-    { key: 'desayuno', hora: '7:30',  titulo: 'Desayuno', icono: '🌅', contenido: diaData?.desayuno, kcal: kcalPorTarea.desayuno, color: '#E8A020', bg: '#FFF8EC', border: '#F9CFA8', esEntreno: false },
-    entreno ? { key: 'entreno', hora: '10:00', titulo: entreno?.tipo || 'Entrenamiento', icono: '🏋️', ejercicios: entreno?.ejercicios, kcal: entreno?.kcal_quemadas || 0, color: C.green, bg: C.greenPale, border: '#C8E8B0', esEntreno: true } : null,
-    { key: 'comida',   hora: '13:30', titulo: 'Comida',   icono: '☀️', contenido: diaData?.comida,   kcal: kcalPorTarea.comida, snack: diaData?.snack, color: C.orange, bg: C.orangePale, border: '#F9CFA8', esEntreno: false },
-    { key: 'cena',     hora: '20:30', titulo: 'Cena',     icono: '🌙', contenido: diaData?.cena,     kcal: kcalPorTarea.cena,   color: '#5B6FA8', bg: '#EEF0FA', border: '#C8CEEA', esEntreno: false },
+    { key: 'desayuno', hora: '7:30',  titulo: 'Desayuno', icono: '🌅', contenido: diaData?.desayuno, kcal: kcalPorTarea.desayuno, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
+    entreno ? { key: 'entreno', hora: '10:00', titulo: entreno?.tipo || 'Entrenamiento', icono: '🏋️', ejercicios: entreno?.ejercicios, kcal: entreno?.kcal_quemadas || 0, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: true } : null,
+    { key: 'comida',   hora: '13:30', titulo: 'Comida',   icono: '☀️', contenido: diaData?.comida,   kcal: kcalPorTarea.comida, snack: diaData?.snack, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
+    { key: 'cena',     hora: '20:30', titulo: 'Cena',     icono: '🌙', contenido: diaData?.cena,     kcal: kcalPorTarea.cena,   color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
   ].filter(Boolean);
 
   return (
@@ -483,10 +498,10 @@ export default function DailyTimeline({
       <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
 
         {/* Header */}
-        <div style={{ background: modoLectura ? '#6B6B6B' : C.green, padding: '16px 20px' }}>
+        <div style={{ background: modoLectura ? '#4B5563' : C.accent, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
                 {modoLectura ? '📖 Vista de ayer' : 'Plan de hoy'}
               </div>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: C.white }}>{DIAS_FULL[diaIndice]}</div>
@@ -549,7 +564,7 @@ export default function DailyTimeline({
         {!cargandoAyer && (
           <div style={{ padding: '20px 20px 0' }}>
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 19, top: 20, bottom: 20, width: 2, background: C.light, borderRadius: 2 }} />
+              <div style={{ position: 'absolute', left: 19, top: 20, bottom: 20, width: 2, background: 'rgba(24,119,143,0.2)', borderRadius: 2 }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {(() => {
                   // Primera tarea incompleta del día = "siguiente acción"
@@ -568,8 +583,8 @@ export default function DailyTimeline({
                         <div style={{ flexShrink: 0 }}>
                           <div style={{
                             width: 40, height: 40, borderRadius: '50%',
-                            background: completado ? '#14B8A6' : esSiguiente ? '#E0F7F5' : ev.bg,
-                            border: `2px solid ${completado ? '#14B8A6' : esSiguiente ? '#14B8A6' : C.light}`,
+                            background: completado ? '#18778f' : esSiguiente ? '#18778f' : '#fff',
+                            border: `2px solid ${completado ? '#0D5F73' : esSiguiente ? '#0D5F73' : '#D1ECF1'}`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: completado ? 16 : 18,
                             boxShadow: esSiguiente && !completado ? '0 0 0 3px rgba(20,184,166,0.2)' : 'none',
