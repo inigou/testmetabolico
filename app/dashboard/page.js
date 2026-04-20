@@ -446,12 +446,21 @@ export default function Dashboard() {
   const [nombreUsuario, setNombreUsuario]             = useState('');
   const [checkinTexto, setCheckinTexto]               = useState('');
   const [protocolos, setProtocolos]                   = useState(['🔥 Déficit activo', '💧 Hidratación prioritaria']);
+  const [reporteBanana, setReporteBanana]             = useState({
+    analisis: null,
+    adherencia: ['gris','gris','gris','gris','gris','gris','gris'],
+  });
 
   // Banana state
   const [mensajesChat, setMensajesChat]               = useState([]);
   const [inputChat, setInputChat]                     = useState('');
   const [chatCargando, setChatCargando]               = useState(false);
-  const [mensajeProactivoGenerado, setMensajeProactivoGenerado] = useState(false);
+  const [mensajeProactivoGenerado, setMensajeProactivoGenerado] = useState(() => {
+    try {
+      const hoy = new Date().toISOString().split('T')[0];
+      return localStorage.getItem(`proactivo_${hoy}`) === 'true';
+    } catch { return false; }
+  });
   const chatEndRef = useRef(null);
 
   const ultimo = datos?.[datos.length - 1];
@@ -517,6 +526,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (!checkinTexto || !planDia || mensajeProactivoGenerado || !ultimo) return;
     setMensajeProactivoGenerado(true);
+    try {
+      const hoy = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`proactivo_${hoy}`, 'true');
+    } catch {}
     generarMensajeProactivo();
   }, [checkinTexto, planDia]);
 
@@ -561,6 +574,12 @@ export default function Dashboard() {
       if (cmd.accion === 'ABRIR_CONFIG') setMostrarConfig(true);
       if (cmd.accion === 'ACTUALIZAR_PROTOCOLOS' && Array.isArray(cmd.nuevos_protocolos)) {
         setProtocolos(cmd.nuevos_protocolos);
+      }
+      if (cmd.accion === 'GENERAR_REPORTE' && cmd.analisis) {
+        setReporteBanana({
+          analisis: cmd.analisis,
+          adherencia: Array.isArray(cmd.adherencia) ? cmd.adherencia : ['gris','gris','gris','gris','gris','gris','gris'],
+        });
       }
 
       if (cmd.accion === 'MODIFICAR_PLATO') {
@@ -947,15 +966,76 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* CTA segundo test — solo si tiene 1 */}
-                {datos.length === 1 && (
-                  <div style={{ background: C.greenPale, border: `1px solid ${C.light}`, borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 22, marginBottom: 6 }}>📅</div>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, color: C.dark, marginBottom: 4 }}>Vuelve en 30 días</div>
-                    <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6, marginBottom: 12 }}>Cuando hagas tu segundo test verás aquí tu evolución y progreso del ICM.</div>
-                    <a href="/bot" style={{ display: 'inline-block', background: C.accent, color: C.white, padding: '8px 20px', borderRadius: 100, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Hacer nuevo test →</a>
+                {/* Veredicto Semanal de Banana */}
+                <div style={{ background: C.panel, border: `1px solid ${C.light}`, borderRadius: 12, overflow: 'hidden' }}>
+                  {/* Header */}
+                  <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>🍌</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.white, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Veredicto semanal de Banana</span>
                   </div>
-                )}
+
+                  <div style={{ padding: '14px' }}>
+                    {/* Mapa de adherencia — 7 días Lun→Dom */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 9, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Adherencia esta semana</div>
+                      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        {['L','M','X','J','V','S','D'].map((dia, i) => {
+                          const estado = reporteBanana.adherencia[i] || 'gris';
+                          const colores = {
+                            verde:   { bg: '#D1FAE5', border: '#34D399', text: '#065F46' },
+                            naranja: { bg: '#FEF3C7', border: '#FBBF24', text: '#92400E' },
+                            rojo:    { bg: '#FEE2E2', border: '#F87171', text: '#991B1B' },
+                            gris:    { bg: '#F3F4F6', border: '#D1D5DB', text: '#9CA3AF' },
+                          };
+                          const col = colores[estado] || colores.gris;
+                          return (
+                            <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                              <div style={{ width: '100%', aspectRatio: '1', borderRadius: 6, background: col.bg, border: `1.5px solid ${col.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 3 }}>
+                                {estado === 'verde'   && <span style={{ fontSize: 10 }}>✓</span>}
+                                {estado === 'naranja' && <span style={{ fontSize: 10 }}>~</span>}
+                                {estado === 'rojo'    && <span style={{ fontSize: 10 }}>✕</span>}
+                                {estado === 'gris'    && <span style={{ fontSize: 8, color: col.text }}>·</span>}
+                              </div>
+                              <div style={{ fontSize: 8, color: col.text, fontWeight: 600 }}>{dia}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Leyenda */}
+                      <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                        {[
+                          { color: '#34D399', label: 'En objetivo' },
+                          { color: '#FBBF24', label: 'Exceso' },
+                          { color: '#F87171', label: 'Fallo' },
+                          { color: '#D1D5DB', label: 'Pendiente' },
+                        ].map((l, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: 2, background: l.color }} />
+                            <span style={{ fontSize: 9, color: '#9CA3AF' }}>{l.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Análisis de Banana */}
+                    {reporteBanana.analisis ? (
+                      <div style={{ background: C.white, borderRadius: 9, padding: '10px 12px', border: `1px solid ${C.light}`, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: 16, flexShrink: 0 }}>🍌</span>
+                        <p style={{ margin: 0, fontSize: 12, color: C.dark, lineHeight: 1.65, fontStyle: 'italic' }}>
+                          {reporteBanana.analisis}
+                        </p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => enviarMensaje('¿Cómo voy esta semana? Dame tu veredicto.')}
+                        style={{ width: '100%', background: 'none', border: `1.5px dashed ${C.light}`, borderRadius: 9, padding: '10px 12px', cursor: 'pointer', fontFamily: font, display: 'flex', gap: 8, alignItems: 'center', color: '#9CA3AF', fontSize: 12 }}
+                      >
+                        <span style={{ fontSize: 16 }}>🍌</span>
+                        <span>Pregúntame cómo vas esta semana →</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
 
               </div>
             </details>
