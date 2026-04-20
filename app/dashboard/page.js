@@ -452,15 +452,14 @@ export default function Dashboard() {
   });
 
   // Banana state
-  const [mensajesChat, setMensajesChat]               = useState([]);
+  const [mensajesChat, setMensajesChat]               = useState(() => {
+    // No restaurar en servidor
+    if (typeof window === 'undefined') return [];
+    return []; // se restaura en useEffect tras tener email
+  });
   const [inputChat, setInputChat]                     = useState('');
   const [chatCargando, setChatCargando]               = useState(false);
-  const [mensajeProactivoGenerado, setMensajeProactivoGenerado] = useState(() => {
-    try {
-      const hoy = new Date().toISOString().split('T')[0];
-      return localStorage.getItem(`proactivo_${hoy}`) === 'true';
-    } catch { return false; }
-  });
+  const [mensajeProactivoGenerado, setMensajeProactivoGenerado] = useState(false);
   const chatEndRef = useRef(null);
 
   const ultimo = datos?.[datos.length - 1];
@@ -471,6 +470,15 @@ export default function Dashboard() {
     const m = mensajesChat[mensajesChat.length - 1];
     if (!m?.cargando) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [mensajesChat]);
+
+  // Persistir chat del día en localStorage (solo mensajes completos, sin los cargando)
+  useEffect(() => {
+    if (!email || mensajesChat.length === 0) return;
+    const hoy = new Date().toISOString().split('T')[0];
+    const completos = mensajesChat.filter(m => !m.cargando && m.texto);
+    if (completos.length === 0) return;
+    try { localStorage.setItem(`chat_${email}_${hoy}`, JSON.stringify(completos)); } catch {}
+  }, [mensajesChat, email]);
 
   // Carga inicial
   useEffect(() => {
@@ -488,6 +496,42 @@ export default function Dashboard() {
         if (checkin.energia != null) {
           const str = `Energía ${checkin.energia}/10 · Sueño ${checkin.sueno}/10 · Estrés ${checkin.estres}/10`;
           setCheckinTexto(str);
+        }
+        // Restaurar protocolos del día
+        const protGuardados = localStorage.getItem(`protocolos_${email}_${hoy}`);
+        if (protGuardados) setProtocolos(JSON.parse(protGuardados));
+        // Restaurar reporte del día
+        const reporteGuardado = localStorage.getItem(`reporte_${email}_${hoy}`);
+        if (reporteGuardado) setReporteBanana(JSON.parse(reporteGuardado));
+        // Restaurar chat del día
+        const chatGuardado = localStorage.getItem(`chat_${email}_${hoy}`);
+        if (chatGuardado) {
+          const msgs = JSON.parse(chatGuardado);
+          if (msgs.length > 0) setMensajesChat(msgs);
+        }
+        // Archivar chat de ayer si existe y no está archivado
+        const ayer = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const chatAyer = localStorage.getItem(`chat_${email}_${ayer}`);
+        if (chatAyer) {
+          try {
+            const msgsAyer = JSON.parse(chatAyer);
+            const resumen = msgsAyer
+              .filter(m => m.rol === 'bot' && !m.cargando && m.texto)
+              .slice(-3)
+              .map(m => m.texto.slice(0, 120))
+              .join(' | ');
+            if (resumen) {
+              const archivo = JSON.parse(localStorage.getItem(`chat_archivo_${email}`) || '[]');
+              // Añadir solo si no está ya archivado ese día
+              if (!archivo.find(a => a.fecha === ayer)) {
+                archivo.unshift({ fecha: ayer, resumen });
+                // Mantener solo los últimos 14 días
+                localStorage.setItem(`chat_archivo_${email}`, JSON.stringify(archivo.slice(0, 14)));
+              }
+            }
+            // Limpiar el chat raw de ayer para no acumular
+            localStorage.removeItem(`chat_${email}_${ayer}`);
+          } catch {}
         }
       } catch {}
 
@@ -526,10 +570,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!checkinTexto || !planDia || mensajeProactivoGenerado || !ultimo) return;
     setMensajeProactivoGenerado(true);
-    try {
-      const hoy = new Date().toISOString().split('T')[0];
-      localStorage.setItem(`proactivo_${hoy}`, 'true');
-    } catch {}
     generarMensajeProactivo();
   }, [checkinTexto, planDia]);
 
@@ -541,10 +581,17 @@ export default function Dashboard() {
       { nombre: 'descanso',         val: ultimo?.des_score },
     ];
     const peor = scores.reduce((a, b) => (a.val || 0) < (b.val || 0) ? a : b);
+    // Leer archivo histórico de conversaciones anteriores
+    let historialArchivo = [];
+    try {
+      historialArchivo = JSON.parse(localStorage.getItem(`chat_archivo_${email}`) || '[]');
+    } catch {}
+
     return {
       email,
       nombre_usuario: nombreUsuario || null,
       plan_semana: planSemanal || null,
+      historial_dias_anteriores: historialArchivo.slice(0, 7), // últimos 7 días
       contexto_dia: {
         checkin: checkinTexto || 'Check-in pendiente — no menciones valores numéricos',
         comidas: planDia?.comidas,
@@ -572,43 +619,60 @@ export default function Dashboard() {
     for (const cmd of comandos) {
       if (cmd.accion === 'MOSTRAR_PLAN') setMostrarSemana(true);
       if (cmd.accion === 'ABRIR_CONFIG') setMostrarConfig(true);
+
+      // ── ACTUALIZAR_PROTOCOLOS — persiste en localStorage ────────
       if (cmd.accion === 'ACTUALIZAR_PROTOCOLOS' && Array.isArray(cmd.nuevos_protocolos)) {
         setProtocolos(cmd.nuevos_protocolos);
-      }
-      if (cmd.accion === 'GENERAR_REPORTE' && cmd.analisis) {
-        setReporteBanana({
-          analisis: cmd.analisis,
-          adherencia: Array.isArray(cmd.adherencia) ? cmd.adherencia : ['gris','gris','gris','gris','gris','gris','gris'],
-        });
+        try {
+          const hoy = new Date().toISOString().split('T')[0];
+          localStorage.setItem(`protocolos_${email}_${hoy}`, JSON.stringify(cmd.nuevos_protocolos));
+        } catch {}
       }
 
+      // ── GENERAR_REPORTE — persiste en localStorage ───────────────
+      if (cmd.accion === 'GENERAR_REPORTE' && cmd.analisis) {
+        const reporte = {
+          analisis: cmd.analisis,
+          adherencia: Array.isArray(cmd.adherencia) ? cmd.adherencia : ['gris','gris','gris','gris','gris','gris','gris'],
+        };
+        setReporteBanana(reporte);
+        try {
+          const hoy = new Date().toISOString().split('T')[0];
+          localStorage.setItem(`reporte_${email}_${hoy}`, JSON.stringify(reporte));
+        } catch {}
+      }
+
+      // ── MODIFICAR_PLATO — persiste en BD + localStorage ──────────
       if (cmd.accion === 'MODIFICAR_PLATO') {
         const { tipo, nuevo_texto, nuevas_kcal } = cmd;
-        if (!tipo || !nuevo_texto) continue;
+        if (!tipo || nuevo_texto == null) continue;
+
+        // Ayuno: normalizar texto y forzar kcal a 0
+        const textoFinal = nuevo_texto.toLowerCase().includes('ayuno') ? 'Ayuno' : nuevo_texto;
+        const kcalFinal  = nuevo_texto.toLowerCase().includes('ayuno') ? 0 : (nuevas_kcal ?? null);
 
         setPlanSemanal(prev => {
           if (!prev?.dieta) return prev;
           const diaIdx = getDiaHoyIdx();
-          // Copia profunda del plan
-          const nuevo = JSON.parse(JSON.stringify(prev));
+          const nuevo  = JSON.parse(JSON.stringify(prev));
 
           if (tipo === 'entreno') {
             if (nuevo.ejercicios?.[diaIdx]) {
-              nuevo.ejercicios[diaIdx].tipo = nuevo_texto;
-              nuevo.ejercicios[diaIdx].ejercicios = [nuevo_texto];
-              if (nuevas_kcal != null) nuevo.ejercicios[diaIdx].kcal_quemadas = nuevas_kcal;
+              nuevo.ejercicios[diaIdx].tipo      = textoFinal;
+              nuevo.ejercicios[diaIdx].ejercicios = [textoFinal];
+              if (kcalFinal != null) nuevo.ejercicios[diaIdx].kcal_quemadas = kcalFinal;
             }
           } else {
-            // desayuno | comida | cena | snack
             if (nuevo.dieta?.[diaIdx]) {
-              nuevo.dieta[diaIdx][tipo] = nuevo_texto;
-              if (nuevas_kcal != null) nuevo.dieta[diaIdx][`kcal_${tipo}`] = nuevas_kcal;
+              nuevo.dieta[diaIdx][tipo] = textoFinal;
+              // Siempre actualizar kcal — incluso si es 0 (ayuno)
+              nuevo.dieta[diaIdx][`kcal_${tipo}`] = kcalFinal ?? 0;
             }
           }
 
-          // Persistir en BD en background
+          // Persistir en BD (background, no bloquea UI)
           guardarPlanDB(email, objetivoId, nuevo).catch(console.error);
-          // Persistir en localStorage
+          // Persistir en localStorage (instantáneo)
           try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: nuevo, fecha: Date.now() })); } catch {}
 
           return nuevo;

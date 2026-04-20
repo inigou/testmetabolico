@@ -88,7 +88,7 @@ function parsearRespuestaCoach(texto) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { pregunta, perfil, tipo, historial, contexto_dia, email, plan_semana, nombre_usuario } = body;
+    const { pregunta, perfil, tipo, historial, contexto_dia, email, plan_semana, nombre_usuario, historial_dias_anteriores } = body;
 
     if (!perfil) return Response.json({ error: "Datos de perfil no proporcionados" }, { status: 400 });
 
@@ -144,6 +144,11 @@ ${contextoPlan}
 REGLA: referencias directas a platos reales del plan. NUNCA inventes alimentos.
 ━━━━━━━━━━━━━━━━━━
 ` : '⚠️ Sin plan generado — anima a crearlo.\n'}
+${historial_dias_anteriores?.length ? `━━━ MEMORIA DE DÍAS ANTERIORES ━━━
+${historial_dias_anteriores.map(d => `${d.fecha}: ${d.resumen}`).join('\n')}
+Usa esta memoria si el usuario pregunta por días pasados ("¿te acuerdas el lunes...?").
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : ''}
 ━━━ ESTADO HOY ━━━
 ${checkinTexto || contextoBiologico || 'Check-in pendiente — no menciones valores numéricos de energía.'}
 ━━━━━━━━━━━━━━━━━
@@ -183,6 +188,12 @@ Los protocolos son máximo 4, texto muy corto (2-4 palabras), siempre con emoji 
 
 REGLA CRÍTICA 1: Si el usuario pide cambiar cualquier comida o entreno, el comando MODIFICAR_PLATO es OBLIGATORIO.
 REGLA CRÍTICA 2: Si detectas un cambio de estrategia o recomiendas una pauta especial, ACTUALIZAR_PROTOCOLOS es OBLIGATORIO.
+REGLA CRÍTICA 3: Si el usuario pregunta cómo va, cómo ha ido la semana o pide análisis/resumen/veredicto, GENERAR_REPORTE es OBLIGATORIO.
+
+5. Generar el veredicto semanal de adherencia:
+{ "accion": "GENERAR_REPORTE", "analisis": "2 frases máx con dato concreto del plan", "adherencia": ["verde|naranja|rojo|gris" x7 dias L-D] }
+Criterios por día: "verde"=completado en objetivo · "naranja"=exceso moderado o tarea omitida · "rojo"=fallo claro · "gris"=día futuro o sin datos.
+Infiere el estado de cada día a partir del planSemanal y la conversación. Menciona algo concreto del plan en el análisis.
 Si no hay comandos, deja el array vacío. NUNCA escribas texto fuera del JSON.`;
 
     const userContent = esCheckinReactivo
