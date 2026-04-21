@@ -2,24 +2,23 @@
 import { useState, useEffect } from 'react';
 
 const C = {
-  bg:        '#ffffff',
-  panel:     '#F0F8FA',
+  bg:        '#1E293B',
+  panel:     '#263447',
+  card:      '#2D3E50',
   accent:    '#18778f',
   accentDk:  '#0D5F73',
-  accentLt:  '#D1ECF1',
+  accentLt:  'rgba(24,119,143,0.25)',
   orange:    '#E8621A',
   white:     '#FFFFFF',
-  dark:      '#111827',
-  mid:       '#4B5563',
-  light:     '#D1ECF1',
-  // columna izquierda oscura
-  leftBg:    '#0F2A35',
-  leftPanel: '#163545',
-  // timeline boxes
+  dark:      '#F1F5F9',
+  mid:       '#94A3B8',
+  light:     'rgba(255,255,255,0.08)',
+  leftBg:    '#1E293B',
+  leftPanel: '#263447',
   boxBg:     '#18778f',
   green:     '#18778f',
-  greenPale: '#D1ECF1',
-  orangePale:'#FDF0E8',
+  greenPale: 'rgba(24,119,143,0.15)',
+  orangePale:'rgba(232,98,26,0.15)',
 };
 const font = 'Trebuchet MS, Verdana, sans-serif';
 const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -54,7 +53,6 @@ async function cargarLogDia(email, fecha) {
   } catch (e) { return null; }
 }
 
-// ── Input sustitución ────────────────────────────────────────────────
 function SubstituteInput({ onEnviar, onCancelar, cargando, placeholder }) {
   const [val, setVal] = useState('');
   return (
@@ -77,7 +75,6 @@ function SubstituteInput({ onEnviar, onCancelar, cargando, placeholder }) {
   );
 }
 
-// ── Quick Add ────────────────────────────────────────────────────────
 function QuickAddInput({ onEnviar, cargando }) {
   const [val, setVal] = useState('');
   const [exito, setExito] = useState(null);
@@ -90,7 +87,7 @@ function QuickAddInput({ onEnviar, cargando }) {
   };
 
   return (
-    <div style={{ marginTop: 20, padding: '14px 16px', background: '#F0F8FA', borderRadius: 14, border: `1.5px dashed ${C.accentLt}` }}>
+    <div style={{ marginTop: 20, padding: '14px 16px', background: '#263447', borderRadius: 18, border: `1.5px dashed rgba(24,119,143,0.35)` }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 4 }}>⚡ Entrada rápida</div>
       <div style={{ fontSize: 11, color: C.mid, marginBottom: 10, lineHeight: 1.5 }}>
         ¿Algo extra hoy? Escríbelo y lo añadimos al contador calórico
@@ -115,93 +112,53 @@ function QuickAddInput({ onEnviar, cargando }) {
   );
 }
 
-
-// ── TareaCard — con auto-colapso reversible y highlight de siguiente acción ──
-function TareaCard({
-  ev, completado, esActual, esSiguiente, esSust, estaCarg, exito,
-  modoLectura, entreno, diaData, font, C,
-  onToggleCheck, onSustituir, onCancelarSust, onVerRutina,
-}) {
+function TareaCard({ ev, completado, esActual, esSiguiente, esSust, estaCarg, exito, modoLectura, entreno, diaData, font, C, onToggleCheck, onSustituir, onCancelarSust, onVerRutina }) {
   const [isExpanded, setIsExpanded] = useState(!completado);
 
-  // Cuando se completa → colapsar automáticamente
   useEffect(() => {
     if (completado) setIsExpanded(false);
     else setIsExpanded(true);
   }, [completado]);
 
-  // Borde: siguiente más sólido, completado semitransparente
-  const borderColor = exito ? '#0D5F73'
-    : esSiguiente ? '#0D5F73'
-    : completado  ? '#0D5F73'
-    : ev.border;
-
-  const boxShadow = esSiguiente && !completado
-    ? '0 4px 16px rgba(24,119,143,0.3)'
-    : '0 2px 8px rgba(24,119,143,0.1)';
+  const borderColor = exito ? '#0D5F73' : esSiguiente ? '#0D5F73' : completado ? '#0D5F73' : ev.border;
+  const boxShadow = esSiguiente && !completado ? '0 4px 16px rgba(24,119,143,0.3)' : '0 2px 8px rgba(24,119,143,0.1)';
 
   return (
-    <div style={{ flex: 1,
-      background: completado ? `${ev.bg}BB` : ev.bg,
-      border: `1.5px solid ${borderColor}`,
-      borderRadius: 14, padding: '12px 14px',
-      opacity: completado && !isExpanded ? 0.65 : 1,
-      transition: 'all 0.25s ease',
-      position: 'relative', overflow: 'hidden',
-      boxShadow,
+    <div style={{
+      flex: 1, background: completado ? `${ev.bg}BB` : ev.bg,
+      border: `1.5px solid ${borderColor}`, borderRadius: 18, padding: '12px 14px',
+      opacity: completado && !isExpanded ? 0.65 : 1, transition: 'all 0.25s ease',
+      position: 'relative', overflow: 'hidden', boxShadow,
       cursor: completado ? 'pointer' : 'default',
-    }}
-      onClick={completado && !esSust ? () => setIsExpanded(v => !v) : undefined}
-    >
-      {/* Línea de acento superior — solo en siguiente acción */}
+    }} onClick={completado && !esSust ? () => setIsExpanded(v => !v) : undefined}>
       {esSiguiente && !completado && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-          background: 'linear-gradient(90deg,rgba(255,255,255,0.4),transparent)',
-          borderRadius: '16px 16px 0 0' }} />
-      )}
-      {esActual && !esSiguiente && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-          background: `linear-gradient(90deg,${ev.color},transparent)`,
-          borderRadius: '16px 16px 0 0' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,rgba(255,255,255,0.4),transparent)', borderRadius: '18px 18px 0 0' }} />
       )}
       {exito && (
-        <div style={{ position: 'absolute', top: 8, right: 44,
-          background: '#14B8A6', color: '#fff', fontSize: 9, fontWeight: 700,
-          padding: '2px 8px', borderRadius: 100, animation: 'pop 0.4s ease' }}>
+        <div style={{ position: 'absolute', top: 8, right: 44, background: '#14B8A6', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, animation: 'pop 0.4s ease' }}>
           ✓ Actualizado
         </div>
       )}
-
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1, marginRight: 8 }}>
-
-          {/* Header siempre visible */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isExpanded ? 6 : 0, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.9)',
-              textTransform: 'uppercase', letterSpacing: '0.06em' }}>{ev.titulo}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{ev.titulo}</span>
             <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)' }}>{ev.hora}</span>
             {ev.kcal > 0 && (
-              <span style={{ fontSize: 9,
-                background: ev.esEntreno ? 'rgba(255,255,255,0.18)' : 'rgba(232,98,26,0.3)',
-                color: ev.esEntreno ? '#fff' : '#FFB385',
-                padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>
+              <span style={{ fontSize: 9, background: ev.esEntreno ? 'rgba(255,255,255,0.18)' : 'rgba(232,98,26,0.3)', color: ev.esEntreno ? '#fff' : '#FFB385', padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>
                 {ev.esEntreno ? `−${ev.kcal} kcal` : `${ev.kcal} kcal`}
               </span>
             )}
             {esSiguiente && !completado && (
-              <span style={{ fontSize: 9, background: '#fff', color: '#18778f',
-                padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>siguiente →</span>
+              <span style={{ fontSize: 9, background: '#fff', color: '#18778f', padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>siguiente →</span>
             )}
             {estaCarg && <span style={{ fontSize: 9, color: '#E8621A' }}>actualizando...</span>}
-            {/* Hint de expansión cuando está colapsado */}
             {completado && (
               <span style={{ fontSize: 9, color: '#9CA3AF', marginLeft: 'auto' }}>
                 {isExpanded ? '▲ colapsar' : '▼ ver detalle'}
               </span>
             )}
           </div>
-
-          {/* Contenido — solo si isExpanded */}
           {isExpanded && (
             <>
               {ev.esEntreno ? (
@@ -210,75 +167,49 @@ function TareaCard({
                     {entreno?.ejercicios?.slice(0, 2).map((ej, j) => (
                       <div key={j} style={{ display: 'flex', gap: 6, marginBottom: 3 }}>
                         <span style={{ color: 'rgba(255,255,255,0.6)', flexShrink: 0, fontSize: 10, marginTop: 2 }}>▸</span>
-                        <span style={{ fontSize: 12, color: '#111827',
-                          textDecoration: completado ? 'line-through' : 'none',
-                          textDecorationColor: '#9CA3AF' }}>{ej}</span>
+                        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', textDecoration: completado ? 'line-through' : 'none', textDecorationColor: 'rgba(255,255,255,0.4)' }}>{ej}</span>
                       </div>
                     ))}
                     {entreno?.ejercicios?.length > 2 && (
-                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>
-                        +{entreno.ejercicios.length - 2} más
-                      </div>
+                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>+{entreno.ejercicios.length - 2} más</div>
                     )}
                   </div>
                   {!completado && (
                     <button onClick={e => { e.stopPropagation(); onVerRutina(); }}
-                      style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.4)', color: '#fff',
-                        padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600,
-                        cursor: 'pointer', fontFamily: font }}>
+                      style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.4)', color: '#fff', padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>
                       Ver rutina completa →
                     </button>
                   )}
                 </div>
               ) : (
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.55,
-                  textDecoration: completado ? 'line-through' : 'none',
-                  textDecorationColor: 'rgba(255,255,255,0.4)' }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.55, textDecoration: completado ? 'line-through' : 'none', textDecorationColor: 'rgba(255,255,255,0.4)' }}>
                   {ev.contenido || '—'}
                 </div>
               )}
-
               {ev.snack && !completado && (
-                <div style={{ marginTop: 8, padding: '5px 10px',
-                  background: 'rgba(0,0,0,0.15)', borderRadius: 8,
-                  fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>
+                <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(0,0,0,0.15)', borderRadius: 8, fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>
                   🍎 Snack: {ev.snack} {diaData?.kcal_snack ? `· ${diaData.kcal_snack} kcal` : ''}
                 </div>
               )}
-
               {esSust && (
                 <SubstituteInput
-                  onEnviar={p => { onSustituir(ev.key, p); }}
+                  onEnviar={p => onSustituir(ev.key, p)}
                   onCancelar={onCancelarSust}
                   cargando={estaCarg}
                   placeholder={ev.esEntreno ? 'Ej: Hoy prefiero surf 90 min...' : 'Ej: No tengo salmón, tengo pollo...'}
                 />
               )}
-
               {!completado && !esSust && !estaCarg && !modoLectura && (
                 <button onClick={e => { e.stopPropagation(); onSustituir(ev.key); }}
-                  style={{ marginTop: 8, background: 'none', border: 'none',
-                    color: 'rgba(255,255,255,0.4)', fontSize: 10, cursor: 'pointer',
-                    fontFamily: font, padding: '2px 0',
-                    display: 'flex', alignItems: 'center', gap: 4 }}>
+                  style={{ marginTop: 8, background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 10, cursor: 'pointer', fontFamily: font, padding: '2px 0', display: 'flex', alignItems: 'center', gap: 4 }}>
                   🔄 <span style={{ textDecoration: 'underline' }}>Adaptar</span>
                 </button>
               )}
             </>
           )}
         </div>
-
-        {/* Check button — siempre visible, stopPropagation para no toggle expand */}
-        <button
-          onClick={e => { e.stopPropagation(); onToggleCheck(ev.key); }}
-          style={{ width: 32, height: 32, borderRadius: '50%',
-            border: `2px solid ${completado ? '#fff' : 'rgba(255,255,255,0.3)'}`,
-            background: completado ? '#fff' : 'rgba(255,255,255,0.1)',
-            color: completado ? '#18778f' : 'rgba(255,255,255,0.3)',
-            fontSize: 14, cursor: modoLectura ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, transition: 'all 0.25s ease',
-            opacity: modoLectura ? 0.6 : 1 }}>
+        <button onClick={e => { e.stopPropagation(); onToggleCheck(ev.key); }}
+          style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${completado ? '#fff' : 'rgba(255,255,255,0.3)'}`, background: completado ? '#fff' : 'rgba(255,255,255,0.1)', color: completado ? '#18778f' : 'rgba(255,255,255,0.3)', fontSize: 14, cursor: modoLectura ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s ease', opacity: modoLectura ? 0.6 : 1 }}>
           ✓
         </button>
       </div>
@@ -288,37 +219,37 @@ function TareaCard({
 
 export default function DailyTimeline({
   planSemanal, setPlanSemanal,
+  planDiario = [], setPlanDiario,
   email, objetivoId,
   onAbrirConfig, onTodoCompletado, onGenerarPlan, cargandoPlan, objetivo,
-  onChecksChange, onGastoActividadChange,
+  onChecksChange, onGastoActividadChange, onIngestaExtra,
   modoRescate,
-  protocolos = [],   // chips de Banana — array de strings con emoji
+  protocolos = [],
 }) {
   const diaHoy       = getDiaHoy();
   const eventoActivo = getEventoActivo();
 
-  const [offsetDia, setOffsetDia]         = useState(0);
+  const [offsetDia, setOffsetDia]                   = useState(0);
   const esHoy       = offsetDia === 0;
   const fechaActiva = fechaStr(offsetDia);
   const diaIndice   = diaDeStr(fechaActiva);
 
-  const [checks, setChecks]                     = useState({ desayuno: false, comida: false, cena: false, entreno: false });
-  const [checksListos, setChecksListos]         = useState(false);
-  const [modoLectura, setModoLectura]           = useState(false);
-  const [cargandoAyer, setCargandoAyer]         = useState(false);
-  const [verRutina, setVerRutina]               = useState(false);
-  const [celebrado, setCelebrado]               = useState(false);
-  const [sustituyendo, setSustituyendo]         = useState(null);
+  const [checks, setChecks]                         = useState({ desayuno: false, comida: false, cena: false, entreno: false });
+  const [checksListos, setChecksListos]             = useState(false);
+  const [modoLectura, setModoLectura]               = useState(false);
+  const [cargandoAyer, setCargandoAyer]             = useState(false);
+  const [verRutina, setVerRutina]                   = useState(false);
+  const [celebrado, setCelebrado]                   = useState(false);
+  const [sustituyendo, setSustituyendo]             = useState(null);
   const [cargandoSustitucion, setCargandoSustitucion] = useState(false);
-  const [sustitucionExito, setSustitucionExito] = useState(null);
+  const [sustitucionExito, setSustitucionExito]     = useState(null);
   const [mensajeCoachSustitucion, setMensajeCoachSustitucion] = useState(null);
-  const [quickAddCargando, setQuickAddCargando] = useState(false);
-  const [gastoExtraLocal, setGastoExtraLocal]   = useState(0);
-  const [ingestaExtra, setIngestaExtra]         = useState(0);
+  const [quickAddCargando, setQuickAddCargando]     = useState(false);
+  const [gastoExtraLocal, setGastoExtraLocal]       = useState(0);
+  const [ingestaExtra, setIngestaExtra]             = useState(0);
 
   const diaData = planSemanal?.dieta?.[diaIndice];
   const entreno = planSemanal?.ejercicios?.[diaIndice];
-
 
   const kcalPorTarea = {
     desayuno: diaData?.kcal_desayuno || 0,
@@ -326,17 +257,15 @@ export default function DailyTimeline({
     cena:     diaData?.kcal_cena     || 0,
   };
 
-  // Cargar checks de hoy desde localStorage
   useEffect(() => {
     if (!email || !esHoy) return;
     try {
       const s = localStorage.getItem(`checks_${email}_${fechaActiva}`);
       if (s) setChecks(JSON.parse(s));
     } catch (e) {}
-    setChecksListos(true); // solo persistir DESPUÉS de haber cargado
+    setChecksListos(true);
   }, [email, fechaActiva]);
 
-  // Cargar ayer desde Supabase
   useEffect(() => {
     if (!email || esHoy) return;
     setCargandoAyer(true); setModoLectura(true);
@@ -350,7 +279,6 @@ export default function DailyTimeline({
     });
   }, [email, fechaActiva]);
 
-  // Persistir checks hoy — solo si ya se han cargado del localStorage
   useEffect(() => {
     if (!email || !esHoy || !checksListos) return;
     try { localStorage.setItem(`checks_${email}_${fechaActiva}`, JSON.stringify(checks)); } catch (e) {}
@@ -379,13 +307,7 @@ export default function DailyTimeline({
     try {
       const res = await fetch('/api/substitute', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          comida_actual: contenidoActual,
-          kcal_actual: esEntreno ? entreno?.kcal_quemadas : kcalPorTarea[eventoKey],
-          peticion, tipo: esEntreno ? 'entreno' : eventoKey,
-          objetivo: objetivo?.nombre || 'mantener peso',
-          peso_usuario: 75,
-        }),
+        body: JSON.stringify({ comida_actual: contenidoActual, kcal_actual: esEntreno ? entreno?.kcal_quemadas : kcalPorTarea[eventoKey], peticion, tipo: esEntreno ? 'entreno' : eventoKey, objetivo: objetivo?.nombre || 'mantener peso', peso_usuario: 75 }),
       });
       const data = await res.json();
       if (data.sustitucion && planSemanal && setPlanSemanal) {
@@ -422,7 +344,7 @@ export default function DailyTimeline({
       const kcal = Math.abs(data.delta_kcal || data.kcal_nuevas || 0);
       const tipo = data.tipo_quick_add || (data.delta_kcal < 0 ? 'gasto' : 'ingesta');
       if (tipo === 'gasto') { if (onGastoActividadChange) onGastoActividadChange(kcal); setGastoExtraLocal(prev => prev + kcal); }
-      else { setIngestaExtra(prev => prev + kcal); }
+      else { setIngestaExtra(prev => prev + kcal); if (onIngestaExtra) onIngestaExtra(kcal); }
       setQuickAddCargando(false);
       return { kcal, tipo, descripcion: data.sustitucion || texto };
     } catch (e) { console.error(e); setQuickAddCargando(false); return null; }
@@ -435,7 +357,7 @@ export default function DailyTimeline({
   // ── Vista sin plan ───────────────────────────────────────────────
   if (!planSemanal) {
     return (
-      <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
+      <div style={{ background: C.panel, borderRadius: 20, border: `1px solid rgba(255,255,255,0.08)`, overflow: 'hidden' }}>
         <div style={{ background: C.accent, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, color: C.white }}>Plan de hoy</div>
@@ -445,8 +367,8 @@ export default function DailyTimeline({
         </div>
         <div style={{ padding: '32px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🍽️</div>
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, color: C.dark, marginBottom: 8 }}>Sin plan esta semana</div>
-          <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.6, marginBottom: 24 }}>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, color: '#F1F5F9', marginBottom: 8 }}>Sin plan esta semana</div>
+          <div style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6, marginBottom: 24 }}>
             Genera tu plan personalizado con comidas, entrenamiento y seguimiento calórico.
           </div>
           <button onClick={onGenerarPlan} disabled={cargandoPlan}
@@ -458,36 +380,43 @@ export default function DailyTimeline({
     );
   }
 
-  // ── Eventos del timeline ─────────────────────────────────────────
-  // NOTA: ya no hay bloque "planTieneKcal" — el plan se muestra siempre
+  // ── Flag: Banana ha construido el día ────────────────────────────
+  const usarPlanDiario = esHoy && planDiario && planDiario.length > 0;
+
   const eventos = [
-    { key: 'desayuno', hora: '7:30',  titulo: 'Desayuno', icono: '🌅', contenido: diaData?.desayuno, kcal: kcalPorTarea.desayuno, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
+    { key: 'desayuno', hora: '7:30',  titulo: 'Desayuno',  icono: '🌅', contenido: diaData?.desayuno, kcal: kcalPorTarea.desayuno, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
     entreno ? { key: 'entreno', hora: '10:00', titulo: entreno?.tipo || 'Entrenamiento', icono: '🏋️', ejercicios: entreno?.ejercicios, kcal: entreno?.kcal_quemadas || 0, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: true } : null,
-    { key: 'comida',   hora: '13:30', titulo: 'Comida',   icono: '☀️', contenido: diaData?.comida,   kcal: kcalPorTarea.comida, snack: diaData?.snack, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
-    { key: 'cena',     hora: '20:30', titulo: 'Cena',     icono: '🌙', contenido: diaData?.cena,     kcal: kcalPorTarea.cena,   color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
+    { key: 'comida',   hora: '13:30', titulo: 'Comida',    icono: '☀️', contenido: diaData?.comida,   kcal: kcalPorTarea.comida, snack: diaData?.snack, color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
+    { key: 'cena',     hora: '20:30', titulo: 'Cena',      icono: '🌙', contenido: diaData?.cena,     kcal: kcalPorTarea.cena,   color: C.accent, bg: C.boxBg, border: C.accentDk, esEntreno: false },
   ].filter(Boolean);
 
   return (
     <>
-      <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes pop{0%{transform:scale(0.8)}50%{transform:scale(1.15)}100%{transform:scale(1)}} @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+      <style>{`
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes pop     { 0% { transform: scale(0.8) } 50% { transform: scale(1.15) } 100% { transform: scale(1) } }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        @keyframes tarjetaEntrada { 0% { opacity: 0; transform: translateY(-20px) scale(0.97) } 60% { transform: translateY(4px) scale(1.01) } 100% { opacity: 1; transform: translateY(0) scale(1) } }
+        .tarjeta-banana-nueva { animation: tarjetaEntrada 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+      `}</style>
 
       {/* Modal rutina completa */}
       {verRutina && entreno && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div onClick={() => setVerRutina(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
-          <div style={{ position: 'relative', zIndex: 1, background: C.white, borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 720, maxHeight: '75vh', overflow: 'auto', padding: '24px 24px 40px', animation: 'slideUp 0.3s ease' }}>
+          <div style={{ position: 'relative', zIndex: 1, background: C.panel, borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 720, maxHeight: '75vh', overflow: 'auto', padding: '24px 24px 40px', animation: 'slideUp 0.3s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: C.dark }}>{entreno.tipo}</div>
                 <div style={{ fontSize: 12, color: C.mid, marginTop: 2 }}>{entreno.kcal_quemadas ? `~${entreno.kcal_quemadas} kcal quemadas` : DIAS_FULL[diaIndice]}</div>
               </div>
-              <button onClick={() => setVerRutina(false)} style={{ background: C.bg, border: 'none', width: 36, height: 36, borderRadius: '50%', fontSize: 16, cursor: 'pointer' }}>✕</button>
+              <button onClick={() => setVerRutina(false)} style={{ background: C.panel, border: 'none', width: 36, height: 36, borderRadius: '50%', fontSize: 16, cursor: 'pointer' }}>✕</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {entreno.ejercicios?.map((ej, i) => (
-                <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', background: C.greenPale, borderRadius: 12, border: '1px solid #C8E8B0' }}>
+                <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', background: 'rgba(24,119,143,0.15)', borderRadius: 16, border: `1px solid rgba(24,119,143,0.3)` }}>
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.green, color: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
-                  <div style={{ fontSize: 13, color: C.dark, lineHeight: 1.5, paddingTop: 4 }}>{ej}</div>
+                  <div style={{ fontSize: 13, color: '#F1F5F9', lineHeight: 1.5, paddingTop: 4 }}>{ej}</div>
                 </div>
               ))}
             </div>
@@ -495,7 +424,7 @@ export default function DailyTimeline({
         </div>
       )}
 
-      <div style={{ background: C.white, borderRadius: 20, border: `1px solid ${C.light}`, overflow: 'hidden' }}>
+      <div style={{ background: C.panel, borderRadius: 20, border: `1px solid rgba(255,255,255,0.08)`, overflow: 'hidden' }}>
 
         {/* Header */}
         <div style={{ background: modoLectura ? '#4B5563' : C.accent, padding: '16px 20px' }}>
@@ -505,22 +434,10 @@ export default function DailyTimeline({
                 {modoLectura ? '📖 Vista de ayer' : 'Plan de hoy'}
               </div>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: C.white }}>{DIAS_FULL[diaIndice]}</div>
-
-              {/* Protocolos activos de Banana */}
               {esHoy && protocolos.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
                   {protocolos.map((p, i) => (
-                    <span key={i} style={{
-                      display: 'inline-flex', alignItems: 'center',
-                      background: 'rgba(255,255,255,0.15)',
-                      border: '1px solid rgba(255,255,255,0.25)',
-                      color: C.white,
-                      borderRadius: 100,
-                      padding: '3px 10px',
-                      fontSize: 10, fontWeight: 600,
-                      backdropFilter: 'blur(4px)',
-                      letterSpacing: '0.02em',
-                    }}>
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: C.white, borderRadius: 100, padding: '3px 10px', fontSize: 10, fontWeight: 600, letterSpacing: '0.02em' }}>
                       {p}
                     </span>
                   ))}
@@ -530,11 +447,9 @@ export default function DailyTimeline({
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button onClick={() => { setOffsetDia(-1); setModoLectura(true); }} style={{ background: offsetDia === -1 ? C.white : 'rgba(255,255,255,0.2)', border: 'none', color: offsetDia === -1 ? C.green : C.white, padding: '6px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>← Ayer</button>
               <button onClick={() => { setOffsetDia(0); setModoLectura(false); }} style={{ background: offsetDia === 0 ? C.white : 'rgba(255,255,255,0.2)', border: 'none', color: offsetDia === 0 ? C.green : C.white, padding: '6px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>Hoy</button>
-              <button onClick={onAbrirConfig} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: C.white, width: 36, height: 36, borderRadius: '50%', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Configurar plantilla base">⚙️</button>
+              <button onClick={onAbrirConfig} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: C.white, width: 36, height: 36, borderRadius: '50%', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚙️</button>
             </div>
           </div>
-
-
           {modoLectura && (
             <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 10px', fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
               📖 Modo lectura — lo que marcaste ayer
@@ -542,17 +457,15 @@ export default function DailyTimeline({
           )}
         </div>
 
-        {/* Mensaje coach sustitución */}
         {mensajeCoachSustitucion && (
-          <div style={{ background: C.greenPale, border: '1px solid #C8E8B0', padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center', animation: 'fadeIn 0.3s ease' }}>
+          <div style={{ background: 'rgba(24,119,143,0.15)', border: `1px solid rgba(24,119,143,0.3)`, padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center', animation: 'fadeIn 0.3s ease' }}>
             <span style={{ fontSize: 16 }}>🤖</span>
-            <span style={{ fontSize: 12, color: '#3B6D11', lineHeight: 1.5 }}>{mensajeCoachSustitucion}</span>
+            <span style={{ fontSize: 12, color: '#7DD3E0', lineHeight: 1.5 }}>{mensajeCoachSustitucion}</span>
           </div>
         )}
 
-        {/* Celebración */}
         {celebrado && progreso === 100 && esHoy && (
-          <div style={{ background: `linear-gradient(135deg,${C.green},#3B6D11)`, padding: '14px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ background: `linear-gradient(135deg,${C.green},#0D5F73)`, padding: '14px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
             <span style={{ fontSize: 22, animation: 'pop 0.4s ease' }}>🎉</span>
             <div style={{ fontSize: 13, color: C.white, fontWeight: 600 }}>¡Día perfecto! Tu metabolismo te lo agradecerá mañana.</div>
           </div>
@@ -560,72 +473,77 @@ export default function DailyTimeline({
 
         {cargandoAyer && <div style={{ padding: '24px', textAlign: 'center', color: C.mid, fontSize: 13 }}>Cargando datos de ayer...</div>}
 
-        {/* Timeline */}
         {!cargandoAyer && (
           <div style={{ padding: '20px 20px 0' }}>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 19, top: 20, bottom: 20, width: 2, background: 'rgba(24,119,143,0.2)', borderRadius: 2 }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {(() => {
-                  // Primera tarea incompleta del día = "siguiente acción"
-                  const primeraPendiente = eventos.find(e => !checks[e.key])?.key || null;
-                  return eventos.map((ev, idx) => {
-                    const completado   = checks[ev.key];
-                    const esActual     = ev.key === eventoActivo && !completado && esHoy;
-                    const esSiguiente  = ev.key === primeraPendiente && esHoy;
-                    const esSust       = sustituyendo === ev.key;
-                    const estaCarg     = cargandoSustitucion === ev.key;
-                    const exito        = sustitucionExito === ev.key;
 
-                    return (
-                      <div key={ev.key} style={{ display: 'flex', gap: 16, paddingBottom: idx < eventos.length - 1 ? 16 : 0 }}>
-                        {/* Icono lateral */}
-                        <div style={{ flexShrink: 0 }}>
-                          <div style={{
-                            width: 40, height: 40, borderRadius: '50%',
-                            background: completado ? '#18778f' : esSiguiente ? '#18778f' : '#fff',
-                            border: `2px solid ${completado ? '#0D5F73' : esSiguiente ? '#0D5F73' : '#D1ECF1'}`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: completado ? 16 : 18,
-                            boxShadow: esSiguiente && !completado ? '0 0 0 3px rgba(20,184,166,0.2)' : 'none',
-                            transition: 'all 0.3s ease', zIndex: 1, position: 'relative',
-                          }}>
-                            {completado ? '✓' : ev.icono}
+            {/* Timeline semanal — oculto cuando Banana ha construido el día */}
+            {!usarPlanDiario && (
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 19, top: 20, bottom: 20, width: 2, background: 'rgba(24,119,143,0.2)', borderRadius: 2 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {(() => {
+                    const primeraPendiente = eventos.find(e => !checks[e.key])?.key || null;
+                    return eventos.map((ev, idx) => {
+                      const completado  = checks[ev.key];
+                      const esActual    = ev.key === eventoActivo && !completado && esHoy;
+                      const esSiguiente = ev.key === primeraPendiente && esHoy;
+                      const esSust      = sustituyendo === ev.key;
+                      const estaCarg    = cargandoSustitucion === ev.key;
+                      const exito       = sustitucionExito === ev.key;
+                      return (
+                        <div key={ev.key} style={{ display: 'flex', gap: 16, paddingBottom: idx < eventos.length - 1 ? 16 : 0 }}>
+                          <div style={{ flexShrink: 0 }}>
+                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: completado ? '#18778f' : esSiguiente ? '#18778f' : '#fff', border: `2px solid ${completado ? '#0D5F73' : esSiguiente ? '#0D5F73' : '#E2E8F0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: completado ? 16 : 18, boxShadow: esSiguiente && !completado ? '0 0 0 3px rgba(24,119,143,0.2)' : 'none', transition: 'all 0.3s ease', zIndex: 1, position: 'relative' }}>
+                              {completado ? '✓' : ev.icono}
+                            </div>
                           </div>
+                          <TareaCard ev={ev} completado={completado} esActual={esActual} esSiguiente={esSiguiente} esSust={esSust} estaCarg={estaCarg} exito={exito} modoLectura={modoLectura} entreno={entreno} diaData={diaData} font={font} C={C} onToggleCheck={toggleCheck} onSustituir={(key, peticion) => peticion ? sustituir(key, peticion) : setSustituyendo(key)} onCancelarSust={() => setSustituyendo(null)} onVerRutina={() => setVerRutina(true)} />
                         </div>
-
-                        {/* Tarjeta */}
-                        <TareaCard
-                          ev={ev}
-                          completado={completado}
-                          esActual={esActual}
-                          esSiguiente={esSiguiente}
-                          esSust={esSust}
-                          estaCarg={estaCarg}
-                          exito={exito}
-                          modoLectura={modoLectura}
-                          entreno={entreno}
-                          diaData={diaData}
-                          font={font}
-                          C={C}
-                          onToggleCheck={toggleCheck}
-                          onSustituir={(key, peticion) => peticion ? sustituir(key, peticion) : setSustituyendo(key)}
-                          onCancelarSust={() => setSustituyendo(null)}
-                          onVerRutina={() => setVerRutina(true)}
-                        />
-                      </div>
-                    );
-                  });
-                })()}
+                      );
+                    });
+                  })()}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Tarjetas construidas por Banana */}
+            {esHoy && planDiario.length > 0 && (
+              <div style={{ marginTop: usarPlanDiario ? 0 : 16 }}>
+                <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span>🍌</span> Plan construido por Banana · {planDiario.length} elementos
+                </div>
+                {planDiario.map((tarjeta, i) => (
+                  <div key={tarjeta.id || i} className={tarjeta.animating ? 'tarjeta-banana-nueva' : ''} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: tarjeta.estado === 'completado' ? C.accent : C.white, border: `2px solid ${C.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: tarjeta.tipo === 'entreno' ? 14 : 12, color: tarjeta.estado === 'completado' ? C.white : C.accent, flexShrink: 0, zIndex: 1, position: 'relative' }}>
+                      {tarjeta.estado === 'completado' ? '✓' : tarjeta.tipo === 'entreno' ? '🏋️' : '☀️'}
+                    </div>
+                    <div style={{ flex: 1, background: C.boxBg, border: `1.5px solid ${C.accentDk}`, borderRadius: 16, padding: '10px 12px', opacity: tarjeta.estado === 'completado' ? 0.65 : 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{tarjeta.titulo}</span>
+                        {tarjeta.hora && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)' }}>{tarjeta.hora}</span>}
+                        {(tarjeta.kcal || tarjeta.kcal_quemadas) && (
+                          <span style={{ fontSize: 9, background: tarjeta.tipo === 'entreno' ? 'rgba(255,255,255,0.18)' : 'rgba(232,98,26,0.3)', color: tarjeta.tipo === 'entreno' ? '#fff' : '#FFB385', padding: '1px 7px', borderRadius: 100, fontWeight: 700 }}>
+                            {tarjeta.tipo === 'entreno' ? `-${tarjeta.kcal_quemadas} kcal` : `${tarjeta.kcal} kcal`}
+                          </span>
+                        )}
+                      </div>
+                      {tarjeta.descripcion && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, marginBottom: 6 }}>{tarjeta.descripcion}</div>}
+                      <button onClick={() => setPlanDiario && setPlanDiario(prev => prev.map((t, j) => j === i ? { ...t, estado: t.estado === 'completado' ? 'pendiente' : 'completado' } : t))}
+                        style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)', color: '#fff', padding: '4px 10px', borderRadius: 100, fontSize: 10, cursor: 'pointer', fontFamily: font }}>
+                        {tarjeta.estado === 'completado' ? '↩ Deshacer' : '✓ Completar'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Quick Add */}
             {esHoy && !modoLectura && (
               <QuickAddInput onEnviar={procesarQuickAdd} cargando={quickAddCargando} />
             )}
 
-            {/* Regenerar plan — solo visible, sin banner intrusivo */}
+            {/* Regenerar plan */}
             {esHoy && (
               <div style={{ marginTop: 16, paddingBottom: 20, textAlign: 'center' }}>
                 <button onClick={onGenerarPlan} disabled={cargandoPlan} style={{ background: 'none', border: 'none', color: '#C0B8B0', fontSize: 11, cursor: 'pointer', fontFamily: font, textDecoration: 'underline' }}>
@@ -633,6 +551,7 @@ export default function DailyTimeline({
                 </button>
               </div>
             )}
+
           </div>
         )}
       </div>

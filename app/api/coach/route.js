@@ -80,7 +80,12 @@ function parsearRespuestaCoach(texto) {
     const parsed = JSON.parse(texto.substring(inicio, fin + 1));
     if (parsed.mensaje_usuario) return parsed;
     return null;
-  } catch (e) {
+  } catch {
+    // Fallback: extraer mensaje_usuario aunque el JSON esté truncado
+    try {
+      const match = texto.match(/"mensaje_usuario"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if (match) return { mensaje_usuario: match[1], comandos: [] };
+    } catch {}
     return null;
   }
 }
@@ -189,11 +194,38 @@ Los protocolos son máximo 4, texto muy corto (2-4 palabras), siempre con emoji 
 REGLA CRÍTICA 1: Si el usuario pide cambiar cualquier comida o entreno, el comando MODIFICAR_PLATO es OBLIGATORIO.
 REGLA CRÍTICA 2: Si detectas un cambio de estrategia o recomiendas una pauta especial, ACTUALIZAR_PROTOCOLOS es OBLIGATORIO.
 REGLA CRÍTICA 3: Si el usuario pregunta cómo va, cómo ha ido la semana o pide análisis/resumen/veredicto, GENERAR_REPORTE es OBLIGATORIO.
+REGLA CRÍTICA 4: Si el usuario dice los ingredientes que tiene, lo que hay en su nevera, o pide que construyas su día, INYECTAR_TARJETAS es OBLIGATORIO.
 
 5. Generar el veredicto semanal de adherencia:
 { "accion": "GENERAR_REPORTE", "analisis": "2 frases máx con dato concreto del plan", "adherencia": ["verde|naranja|rojo|gris" x7 dias L-D] }
 Criterios por día: "verde"=completado en objetivo · "naranja"=exceso moderado o tarea omitida · "rojo"=fallo claro · "gris"=día futuro o sin datos.
 Infiere el estado de cada día a partir del planSemanal y la conversación. Menciona algo concreto del plan en el análisis.
+
+6. Construir o reconstruir el timeline diario (TÚ eres el creador de la agenda):
+{ "accion": "INYECTAR_TARJETAS", "tarjetas": [
+  { "tipo": "comida", "titulo": "Nombre del plato", "descripcion": "Detalle con gramos", "hora": "HH:MM", "kcal": 000, "estado": "pendiente" },
+  { "tipo": "entreno", "titulo": "Nombre del entreno", "descripcion": "Detalle del ejercicio", "hora": "HH:MM", "kcal_quemadas": 000, "estado": "pendiente" }
+]}
+CUÁNDO usarlo:
+- El usuario dice lo que tiene en la nevera o sus ingredientes disponibles → construye el día entero
+- El usuario pide que le armes el día, el menú, o la agenda
+- El usuario tiene una lesión o restricción nueva → reconstruye adaptando
+- Quiere cambiar la estructura completa del día (no un solo plato)
+Las tarjetas deben respetar el objetivo calórico del plan estratégico. Genera entre 3 y 5 tarjetas (desayuno, entreno, comida, snack, cena). Siempre incluye hora realista.
+
+7. Regenerar el plan estratégico semanal completo (solo si cambia el objetivo vital):
+{ "accion": "RESET_ESTRATEGIA" }
+CUÁNDO usarlo: solo si el usuario cambia radicalmente su objetivo (de déficit a volumen, de sedentario a atleta, etc.). NO usar para cambios del día a día.
+
+8. Modificar los ejercicios de los días restantes de la semana (lesión, viaje, restricción temporal):
+{ "accion": "MODIFICAR_SEMANA", "motivo": "texto corto explicando el motivo", "cambios_ejercicios": [
+  { "dia_idx": 2, "tipo": "Caminata suave 30 min", "ejercicios": ["Caminata suave 30 min a ritmo conversacional"], "kcal_quemadas": 120 },
+  { "dia_idx": 3, "tipo": "Movilidad y stretching", "ejercicios": ["10 min movilidad articular", "20 min stretching suave"], "kcal_quemadas": 60 }
+]}
+CUÁNDO usarlo: cuando el usuario menciona una restricción que dura MÁS DE UN DÍA (lesión, viaje, semana ocupada).
+REGLA: solo modifica los días desde hoy en adelante (dia_idx >= día actual). NUNCA toca las kcal ni los platos — solo ejercicios.
+REGLA CRÍTICA 5: Si el usuario menciona lesión, limitación física o restricción que afecta a varios días, MODIFICAR_SEMANA es OBLIGATORIO.
+
 Si no hay comandos, deja el array vacío. NUNCA escribas texto fuera del JSON.`;
 
     const userContent = esCheckinReactivo
@@ -202,7 +234,7 @@ Si no hay comandos, deja el array vacío. NUNCA escribas texto fuera del JSON.`;
 
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
+      max_tokens: 3000,
       system: systemPrompt,
       messages: [
         { role: "user", content: `Perfil: ICM ${perfil.icm}/100 (${perfil.categoria}), edad metabólica ${perfil.edad_metabolica} años. Peor: ${perfil.peor_bloque}. ECO:${perfil.eco} EFH:${perfil.efh} NUT:${perfil.nut} DES:${perfil.des} VIT:${perfil.vit}. Hoy: ${fechaHoy}.` },

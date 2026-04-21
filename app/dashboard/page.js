@@ -10,21 +10,24 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
 
 const C = {
-  bg:       '#ffffff',
-  panel:    '#F0F8FA',
-  dark:     '#111827',
-  mid:      '#4B5563',
-  accent:   '#18778f',
-  accentDk: '#0D5F73',
-  accentLt: '#D1ECF1',
-  orange:   '#E8621A',
-  orangeLt: '#FDF0E8',
-  light:    '#D1ECF1',
-  white:    '#FFFFFF',
-  greenPale:'#D1ECF1',
-  leftBg:   '#0F2A35',
-  leftPanel:'#163545',
-  slate:    '#163545',
+  bg:        '#1E293B',
+  panel:     '#263447',
+  card:      '#2D3E50',
+  dark:      '#F1F5F9',
+  mid:       '#94A3B8',
+  accent:    '#18778f',
+  accentDk:  '#0D5F73',
+  accentLt:  'rgba(24,119,143,0.25)',
+  orange:    '#E8621A',
+  orangeLt:  'rgba(232,98,26,0.15)',
+  light:     'rgba(255,255,255,0.08)',
+  white:     '#FFFFFF',
+  greenPale: 'rgba(24,119,143,0.12)',
+  orangePale:'rgba(232,98,26,0.12)',
+  leftBg:    '#1E293B',
+  leftPanel: '#263447',
+  slate:     '#1E293B',
+  boxBg:     '#18778f',
 };
 const font = "'Trebuchet MS', Verdana, Geneva, sans-serif";
 
@@ -211,9 +214,9 @@ function MicroCheckIn({ email, onCheckinChange, onBananaReactivo }) {
         </div>
       )}
 
-      <div style={{ background: C.panel, borderRadius: 14, padding: '14px 16px', border: `1px solid ${C.light}`, marginBottom: 12 }}>
+      <div style={{ background: C.panel, borderRadius: 14, padding: '14px 16px', border: `1px solid rgba(255,255,255,0.08)`, marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             ⚡ Check-in de hoy
           </div>
           {guardado && (
@@ -331,7 +334,7 @@ function BananaChat({ mensajes, input, setInput, cargando, onEnviar, chatEndRef,
         <input value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !cargando && input.trim() && onEnviar()}
           placeholder="Pregúntale a Banana..."
-          style={{ flex: 1, padding: '10px 14px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 16, fontFamily: font, outline: 'none', color: C.dark, background: C.white }} />
+          style={{ flex: 1, padding: '10px 14px', border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 100, fontSize: 16, fontFamily: font, outline: 'none', color: '#1E293B', background: '#ffffff' }} />
         <button onClick={() => !cargando && input.trim() && onEnviar()} disabled={cargando}
           style={{ background: cargando ? C.light : C.accent, color: C.white, border: 'none', padding: '10px 16px', borderRadius: 100, fontSize: 13, cursor: cargando ? 'not-allowed' : 'pointer', fontFamily: font, fontWeight: 700, flexShrink: 0 }}>
           {cargando ? '...' : '→'}
@@ -403,29 +406,51 @@ function SuperBotonEventos({ onCerrar, onEnviar }) {
 
 
 // ── KcalTracker — Centro de Mando Calórico ──────────────────────────
-function KcalTracker({ planSemanal, completedTasks }) {
+function KcalTracker({ planSemanal, completedTasks, planDiario = [], objetivoId, gastoExtra = 0, ingestaExtra = 0 }) {
   const getDiaHoy = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
   const diaIdx    = getDiaHoy();
   const diaData   = planSemanal?.dieta?.[diaIdx];
   const entreno   = planSemanal?.ejercicios?.[diaIdx];
 
-  if (!diaData) return null;
+  const usarPlanDiario = planDiario && planDiario.length > 0;
+  if (!diaData && !usarPlanDiario) return null;
 
-  // Kcal objetivo: suma de todas las comidas planificadas hoy
-  const kcalObj = (diaData.kcal_desayuno || 0) + (diaData.kcal_comida || 0) +
-                  (diaData.kcal_cena || 0) + (diaData.kcal_snack || 0);
+  // Kcal objetivo: desde planDiario si activo, si no desde plan semanal
+  const kcalObjSemanal = diaData
+    ? (diaData.kcal_desayuno || 0) + (diaData.kcal_comida || 0) +
+      (diaData.kcal_cena || 0) + (diaData.kcal_snack || 0)
+    : 0;
 
-  // Kcal consumidas: solo comidas marcadas como completadas
-  const kcalCons = (completedTasks?.desayuno ? (diaData.kcal_desayuno || 0) : 0) +
-                   (completedTasks?.comida   ? (diaData.kcal_comida   || 0) : 0) +
-                   (completedTasks?.cena     ? (diaData.kcal_cena     || 0) : 0);
+  // Kcal consumidas — plan semanal (completedTasks)
+  const kcalConsBase =
+    (completedTasks?.desayuno ? (diaData?.kcal_desayuno || 0) : 0) +
+    (completedTasks?.comida   ? (diaData?.kcal_comida   || 0) : 0) +
+    (completedTasks?.cena     ? (diaData?.kcal_cena     || 0) : 0);
 
-  // Kcal quemadas por entreno si completado
-  const kcalQuemadas = (completedTasks?.entreno && entreno?.kcal_quemadas) ? entreno.kcal_quemadas : 0;
+  // Kcal consumidas — tarjetas Banana
+  const kcalConsBanana = usarPlanDiario
+    ? planDiario.filter(t => t.estado === 'completado' && t.tipo !== 'entreno').reduce((sum, t) => sum + (t.kcal || 0), 0)
+    : 0;
 
-  // Balance neto
-  const balance    = kcalCons - kcalQuemadas;
-  const pct        = kcalObj > 0 ? Math.min(100, Math.round((kcalCons / kcalObj) * 100)) : 0;
+  const kcalCons = usarPlanDiario ? kcalConsBanana : kcalConsBase;
+
+  // Kcal quemadas
+  const kcalQuemadas = usarPlanDiario
+    ? planDiario.filter(t => t.estado === 'completado' && t.tipo === 'entreno').reduce((sum, t) => sum + (t.kcal_quemadas || 0), 0)
+    : (completedTasks?.entreno && entreno?.kcal_quemadas) ? entreno.kcal_quemadas : 0;
+
+  // kcalObj: si hay planDiario, sumar kcal totales de las tarjetas
+  const kcalObjDiario = usarPlanDiario
+    ? planDiario.filter(t => t.tipo !== 'entreno').reduce((sum, t) => sum + (t.kcal || 0), 0)
+    : 0;
+
+  const kcalObj = (planDiario && planDiario.length > 0 && kcalObjDiario > 0) ? kcalObjDiario : kcalObjSemanal;
+
+  // Balance neto — incluye extras de Quick Add
+  const kcalConsTotal = kcalCons + ingestaExtra;
+  const kcalQuemadasTotal = kcalQuemadas + gastoExtra;
+  const balance    = kcalConsTotal - kcalQuemadasTotal;
+  const pct        = kcalObj > 0 ? Math.min(100, Math.round((kcalConsTotal / kcalObj) * 100)) : 0;
   const superavit  = balance > kcalObj * 1.1;
   const deficit    = kcalCons < kcalObj * 0.3 && completedTasks && Object.values(completedTasks).some(Boolean);
 
@@ -434,61 +459,68 @@ function KcalTracker({ planSemanal, completedTasks }) {
   const statusIcon = pct >= 90 ? '✅' : pct >= 55 ? '🔥' : pct >= 30 ? '⚡' : '💤';
 
   // SVG arco circular
-  const R = 28; const circ = 2 * Math.PI * R;
+  const R = 34; const circ = 2 * Math.PI * R;
   const dash = circ * (pct / 100);
 
   return (
     <div className="kcal-tracker-sticky" style={{
-      position: 'sticky', top: 60, zIndex: 10,
-      background: 'rgba(237,249,253,0.95)',
+      position: 'sticky', top: 0, zIndex: 10,
+      background: 'rgba(38,52,71,0.98)',
       backdropFilter: 'blur(8px)',
-      borderBottom: `2px solid #14B8A6`,
-      padding: '12px 16px',
-      display: 'flex', alignItems: 'center', gap: 14,
+      borderBottom: `2px solid ${barColor}`,
+      padding: '14px 18px',
+      display: 'flex', alignItems: 'center', gap: 16,
     }}>
-      {/* Arco circular */}
-      <div style={{ flexShrink: 0, position: 'relative', width: 66, height: 66 }}>
-        <svg width="66" height="66" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx="33" cy="33" r={R} fill="none" stroke="#D1ECF1" strokeWidth="5" />
-          <circle cx="33" cy="33" r={R} fill="none" stroke={barColor}
-            strokeWidth="5" strokeLinecap="round"
+      {/* Arco circular — más grande */}
+      <div style={{ flexShrink: 0, position: 'relative', width: 80, height: 80 }}>
+        <svg width="80" height="80" style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx="40" cy="40" r={R} fill="none" stroke="#E2E8F0" strokeWidth="6" />
+          <circle cx="40" cy="40" r={R} fill="none" stroke={barColor}
+            strokeWidth="6" strokeLinecap="round"
             strokeDasharray={`${dash} ${circ}`}
             style={{ transition: 'stroke-dasharray 0.6s ease' }} />
         </svg>
         <div style={{
           position: 'absolute', inset: 0, display: 'flex',
           alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 800, color: barColor,
+          fontSize: 15, fontWeight: 800, color: barColor,
           fontFamily: 'Georgia, serif',
         }}>{pct}%</div>
       </div>
 
-      {/* Números */}
+      {/* Números — más grandes */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: 26, fontWeight: 700, color: '#111827', lineHeight: 1 }}>
-            {kcalCons.toLocaleString()}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 5 }}>
+          <span style={{ fontFamily: 'Georgia, serif', fontSize: 32, fontWeight: 700, color: '#F1F5F9', lineHeight: 1 }}>
+            {kcalConsTotal.toLocaleString()}
           </span>
-          <span style={{ fontSize: 12, color: '#6B7280' }}>/ {kcalObj.toLocaleString()} kcal</span>
-          <span style={{ fontSize: 16, marginLeft: 2 }}>{statusIcon}</span>
+          <span style={{ fontSize: 13, color: '#94A3B8' }}>/ {kcalObj.toLocaleString()} kcal</span>
+          <span style={{ fontSize: 18, marginLeft: 2 }}>{statusIcon}</span>
         </div>
 
         {/* Barra lineal */}
-        <div style={{ height: 4, background: '#D1ECF1', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+        <div style={{ height: 5, background: '#E2E8F0', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
           <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 99, transition: 'width 0.6s ease' }} />
         </div>
 
         {/* Detalle comidas */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-          {[
-            { label: 'Desayuno', val: diaData.kcal_desayuno, done: completedTasks?.desayuno },
-            { label: 'Comida',   val: diaData.kcal_comida,   done: completedTasks?.comida   },
-            { label: 'Cena',     val: diaData.kcal_cena,     done: completedTasks?.cena     },
-          ].filter(s => s.val > 0).map((s, i) => (
-            <span key={i} style={{ fontSize: 10, color: s.done ? '#0D9488' : '#9CA3AF', fontWeight: s.done ? 700 : 400, display: 'flex', alignItems: 'center', gap: 2 }}>
-              {s.done ? '✓' : '○'} {s.label} {s.val}
-            </span>
-          ))}
+          {usarPlanDiario
+            ? planDiario.filter(t => t.tipo !== 'entreno' && t.kcal > 0).map((t, i) => (
+                <span key={i} style={{ fontSize: 10, color: t.estado === 'completado' ? '#0D9488' : '#9CA3AF', fontWeight: t.estado === 'completado' ? 700 : 400, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {t.estado === 'completado' ? '✓' : '○'} {t.titulo?.split(':')[0] || t.tipo} {t.kcal}
+                </span>
+              ))
+            : [
+                { label: 'Desayuno', val: diaData?.kcal_desayuno, done: completedTasks?.desayuno },
+                { label: 'Comida',   val: diaData?.kcal_comida,   done: completedTasks?.comida   },
+                { label: 'Cena',     val: diaData?.kcal_cena,     done: completedTasks?.cena     },
+              ].filter(s => s.val > 0).map((s, i) => (
+                <span key={i} style={{ fontSize: 10, color: s.done ? '#0D9488' : '#9CA3AF', fontWeight: s.done ? 700 : 400, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {s.done ? '✓' : '○'} {s.label} {s.val}
+                </span>
+              ))
+          }
           {kcalQuemadas > 0 && (
             <span style={{ fontSize: 10, color: '#0D9488', fontWeight: 700 }}>🏋️ −{kcalQuemadas}</span>
           )}
@@ -548,6 +580,7 @@ export default function Dashboard() {
   const [streak, setStreak]             = useState(0);
   const [completedTasksHoy, setCompletedTasksHoy] = useState({});
   const [gastoActividadExtra, setGastoActividadExtra] = useState(0);
+  const [ingestaExtraDia, setIngestaExtraDia]         = useState(0);
   const [mostrarSuperBoton, setMostrarSuperBoton]     = useState(false);
   const [presupuestoBase, setPresupuestoBase]         = useState(0);
   const [modoRescateActivo, setModoRescateActivo]     = useState(false);
@@ -570,7 +603,8 @@ export default function Dashboard() {
   const [chatCargando, setChatCargando]               = useState(false);
   const [mensajeProactivoGenerado, setMensajeProactivoGenerado] = useState(false);
   const chatEndRef = useRef(null);
-  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false); // legacy, ya no se usa
+  const [activeTab, setActiveTab]                 = useState('hoy'); // 'chat' | 'hoy' | 'perfil'
 
   const ultimo = datos?.[datos.length - 1];
 
@@ -617,6 +651,12 @@ export default function Dashboard() {
         if (planDiarioGuardado) {
           try { setPlanDiario(JSON.parse(planDiarioGuardado)); } catch {}
         }
+
+        // Inicializar completedTasksHoy desde localStorage para que KcalTracker arranque correcto
+        try {
+          const checksGuardados = localStorage.getItem(`checks_${email}_${hoy}`);
+          if (checksGuardados) setCompletedTasksHoy(JSON.parse(checksGuardados));
+        } catch {}
         // Restaurar protocolos del día
         const protGuardados = localStorage.getItem(`protocolos_${email}_${hoy}`);
         if (protGuardados) setProtocolos(JSON.parse(protGuardados));
@@ -857,6 +897,33 @@ export default function Dashboard() {
         setMostrarConfig(true);
       }
 
+      // ── MODIFICAR_SEMANA — adaptar ejercicios días restantes ──────
+      if (cmd.accion === 'MODIFICAR_SEMANA' && Array.isArray(cmd.cambios_ejercicios)) {
+        const diaHoyIdx = getDiaHoyIdx();
+        setPlanSemanal(prev => {
+          if (!prev?.ejercicios) return prev;
+          const nuevo = JSON.parse(JSON.stringify(prev));
+          for (const cambio of cmd.cambios_ejercicios) {
+            // Solo días desde hoy en adelante
+            if (cambio.dia_idx >= diaHoyIdx && nuevo.ejercicios[cambio.dia_idx]) {
+              nuevo.ejercicios[cambio.dia_idx] = {
+                ...nuevo.ejercicios[cambio.dia_idx],
+                tipo: cambio.tipo,
+                ejercicios: cambio.ejercicios || [cambio.tipo],
+                kcal_quemadas: cambio.kcal_quemadas ?? nuevo.ejercicios[cambio.dia_idx].kcal_quemadas,
+                _modificado_banana: cmd.motivo || true,
+              };
+            }
+          }
+          // Persistir en BD y localStorage
+          guardarPlanDB(email, objetivoId, nuevo).catch(console.error);
+          try { localStorage.setItem(`plan_${email}_${objetivoId}`, JSON.stringify({ plan: nuevo, fecha: Date.now() })); } catch {}
+          return nuevo;
+        });
+        // Actualizar planDia si el día actual fue modificado
+        setPlanSemanal(prev => { if (prev) actualizarPlanDia(prev); return prev; });
+      }
+
       // ── ACTUALIZAR_PROTOCOLOS — localStorage + Supabase ──────────
       if (cmd.accion === 'ACTUALIZAR_PROTOCOLOS' && Array.isArray(cmd.nuevos_protocolos)) {
         setProtocolos(cmd.nuevos_protocolos);
@@ -1053,8 +1120,276 @@ export default function Dashboard() {
   const pathD = chartData?.length > 1 ? chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x * 6.8} ${p.y * 1.1}`).join(' ') : null;
   const areaD = pathD ? `${pathD} L ${chartData[chartData.length-1].x*6.8} 110 L ${chartData[0].x*6.8} 110 Z` : null;
 
+  // ── Helpers de render compartidos ────────────────────────────────
+  const renderSidebar = () => (
+    <>
+      {/* ICM compacto */}
+      <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, borderRadius: 14, padding: '12px 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>ICM · Calidad Metabólica</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', fontWeight: 700 }}>{icmLabel(ultimo.icm_total)}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 30, color: C.white, lineHeight: 1 }}>{ultimo.icm_total}<span style={{ fontSize: 11, opacity: 0.5 }}>/100</span></div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>Edad metab. <strong style={{ color: C.white }}>{ultimo.edad_metabolica}</strong></div>
+          </div>
+        </div>
+        <div style={{ height: 3, background: 'rgba(255,255,255,0.2)', borderRadius: 100, overflow: 'hidden', marginBottom: 8 }}>
+          <div style={{ height: '100%', width: `${ultimo.icm_total}%`, background: C.white, borderRadius: 100 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 3 }}>
+          {[{ icon: '⚡', val: ultimo.efh_score }, { icon: '🏋️', val: ultimo.eco_score }, { icon: '🥗', val: ultimo.nut_score }, { icon: '🧠', val: ultimo.vit_score }, { icon: '😴', val: ultimo.des_score }].map((s, i) => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '4px 2px', textAlign: 'center' }}>
+              <div style={{ fontSize: 10 }}>{s.icon}</div>
+              <div style={{ fontSize: 11, color: C.white, fontWeight: 700, fontFamily: 'Georgia, serif' }}>{s.val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Check-in */}
+      <MicroCheckIn email={email} onCheckinChange={setCheckinTexto} onBananaReactivo={handleCheckinReactivo} />
+
+      {/* Protocolos */}
+      {protocolos.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {protocolos.map((p, i) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(24,119,143,0.2)', border: '1px solid rgba(24,119,143,0.35)', color: '#7DD3E0', borderRadius: 100, padding: '4px 10px', fontSize: 10, fontWeight: 600 }}>{p}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Racha */}
+      {streak > 0 && (
+        <div style={{ background: streak >= 7 ? C.accent : '#2D3E50', borderRadius: 12, padding: '9px 12px', border: `1px solid rgba(255,255,255,0.08)`, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>{streak >= 7 ? '🔥' : '⚡'}</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.white, fontFamily: 'Georgia, serif' }}>{streak} días de racha</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>{streak >= 7 ? '¡Racha semanal activa!' : `${7 - streak} para la semanal`}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bloques metabólicos detalle ── */}
+      <div style={{ background: '#263447', borderRadius: 14, padding: '12px 14px', border: `1px solid rgba(255,255,255,0.06)` }}>
+        <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>📊 Tus 5 bloques</div>
+        {[
+          { icon: '⚡', label: 'Actividad física',     val: ultimo.efh_score, peso: '20%' },
+          { icon: '🏋️', label: 'Composición corporal', val: ultimo.eco_score, peso: '35%' },
+          { icon: '🥗', label: 'Nutrición',            val: ultimo.nut_score, peso: '25%' },
+          { icon: '😴', label: 'Descanso',             val: ultimo.des_score, peso: '15%' },
+          { icon: '🧠', label: 'Vitalidad',            val: ultimo.vit_score, peso: '5%'  },
+        ].map((s, i) => {
+          const col = s.val >= 80 ? '#22C55E' : s.val >= 65 ? C.accent : s.val >= 50 ? '#F9A825' : C.orange;
+          return (
+            <div key={i} style={{ marginBottom: i < 4 ? 10 : 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>{s.icon}</span>
+                  <span style={{ fontSize: 12, color: '#CBD5E1' }}>{s.label}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 9, color: '#64748B' }}>{s.peso}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: col, fontFamily: 'Georgia, serif' }}>{s.val}</span>
+                </div>
+              </div>
+              <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 100, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${s.val}%`, background: col, borderRadius: 100, transition: 'width 0.8s ease' }} />
+              </div>
+            </div>
+          );
+        })}
+        <div style={{ marginTop: 12, padding: '8px 10px', background: '#1E293B', borderRadius: 9, fontSize: 11, color: '#64748B', lineHeight: 1.6 }}>
+          💡 ICM potencial: <strong style={{ color: C.accent }}>{Math.min(100, Math.round(ultimo.icm_total * 1.18))}/100</strong> mejorando tus 2 bloques más bajos
+        </div>
+      </div>
+
+      {/* ── Edad metabólica vs real ── */}
+      <div style={{ background: '#263447', borderRadius: 14, padding: '12px 14px', border: `1px solid rgba(255,255,255,0.06)` }}>
+        <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>⏱️ Edad metabólica</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '10px 8px' }}>
+            <div style={{ fontSize: 9, color: '#64748B', marginBottom: 3 }}>Edad real</div>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: 'rgba(255,255,255,0.35)', lineHeight: 1 }}>
+              {ultimo.edad_metabolica + Math.abs(ultimo.delta_anos || 0)}
+            </div>
+          </div>
+          <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.2)' }}>→</div>
+          <div style={{ flex: 1, textAlign: 'center', background: C.accent, borderRadius: 10, padding: '10px 8px' }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginBottom: 3 }}>Metabólica</div>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: C.white, lineHeight: 1 }}>{ultimo.edad_metabolica}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', marginTop: 3 }}>
+              {ultimo.delta_anos <= 0 ? `${Math.abs(ultimo.delta_anos)} años mejor ↑` : `${ultimo.delta_anos} años peor ↓`}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Próximo objetivo ── */}
+      <div style={{ background: `linear-gradient(135deg,${C.orange}22,${C.orange}08)`, borderRadius: 14, padding: '12px 14px', border: `1px solid ${C.orange}33` }}>
+        <div style={{ fontSize: 10, color: C.orange, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🎯 Objetivo activo</div>
+        <div style={{ fontSize: 14, color: C.white, fontWeight: 700, marginBottom: 4 }}>
+          {OBJETIVOS.find(o => o.id === objetivoId)?.emoji} {OBJETIVOS.find(o => o.id === objetivoId)?.nombre}
+        </div>
+        <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.6 }}>
+          Bloque a mejorar: <strong style={{ color: C.orange }}>
+            {[{ n: 'actividad', v: ultimo.efh_score }, { n: 'nutrición', v: ultimo.nut_score }, { n: 'descanso', v: ultimo.des_score }, { n: 'vitalidad', v: ultimo.vit_score }, { n: 'composición', v: ultimo.eco_score }].reduce((a, b) => a.v < b.v ? a : b).n}
+          </strong>
+        </div>
+        <button onClick={() => setMostrarConfig(true)} style={{ marginTop: 10, background: 'none', border: `1px solid ${C.orange}55`, color: C.orange, padding: '5px 12px', borderRadius: 100, fontSize: 10, cursor: 'pointer', fontFamily: font, fontWeight: 600 }}>
+          Cambiar objetivo →
+        </button>
+      </div>
+    </>
+  );
+
+  const renderChat = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <BananaChat
+        mensajes={mensajesChat} input={inputChat} setInput={setInputChat}
+        cargando={chatCargando} onEnviar={enviarMensaje}
+        chatEndRef={chatEndRef} inline={true}
+      />
+      {/* Chips sugerencias */}
+      <div style={{ padding: '6px 12px 8px', display: 'flex', gap: 6, flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.06)', background: '#1A2A3A', flexShrink: 0 }}>
+        {[
+          { emoji: '🍽️', texto: 'Muéstrame el plan de hoy completo' },
+          { emoji: '🏋️', texto: 'Detalla el entreno de hoy' },
+          { emoji: '🥦', texto: 'Construye mi día con lo que tengo en casa' },
+          { emoji: '🦵', texto: 'Tengo una lesión, adapta la semana' },
+          { emoji: '📊', texto: '¿Cómo voy esta semana?' },
+          { emoji: '🍕', texto: 'Me he empachado con un delivery, ¿qué hago?' },
+          { emoji: '🍷', texto: 'Bebí bastante anoche, adapta hoy' },
+          { emoji: '😴', texto: 'Dormí muy poco, ajusta el plan' },
+          { emoji: '✈️', texto: 'Estoy viajando, sin gimnasio ni cocina' },
+        ].map((chip, i) => (
+          <button key={i} onClick={() => enviarMensaje(chip.texto)} style={{ background: '#263447', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', padding: '5px 10px', borderRadius: 100, fontSize: 10, cursor: 'pointer', fontFamily: font }}>
+            {chip.emoji} {chip.texto.split(' ').slice(0, 4).join(' ')}...
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderTimeline = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {planSemanal && <KcalTracker planSemanal={planSemanal} completedTasks={completedTasksHoy} planDiario={planDiario} objetivoId={objetivoId} gastoExtra={gastoActividadExtra} ingestaExtra={ingestaExtraDia} />}
+      <div style={{ padding: '12px' }}>
+        <DailyTimeline
+          planSemanal={planSemanal} setPlanSemanal={setPlanSemanal}
+          planDiario={planDiario} setPlanDiario={setPlanDiario}
+          email={email} objetivoId={objetivoId}
+          onAbrirConfig={() => setMostrarConfig(true)}
+          onTodoCompletado={() => setMensajesChat(prev => [...prev, { rol: 'bot', texto: '¡Día perfecto completado! 🎉', cargando: false }])}
+          onGenerarPlan={generarPlan} cargandoPlan={cargandoPlan}
+          objetivo={OBJETIVOS.find(o => o.id === objetivoId)}
+          onChecksChange={checks => setCompletedTasksHoy(checks)}
+          onGastoActividadChange={delta => setGastoActividadExtra(prev => prev + delta)}
+          onIngestaExtra={delta => setIngestaExtraDia(prev => prev + delta)}
+          presupuestoBase={presupuestoBase} onKcalConsumidas={() => {}}
+          modoRescate={modoRescateActivo} protocolos={protocolos}
+        />
+        <button onClick={() => setMostrarSuperBoton(true)} style={{ background: `linear-gradient(135deg,#E65100,${C.orange})`, border: 'none', borderRadius: 14, padding: '12px 16px', cursor: 'pointer', fontFamily: font, width: '100%', textAlign: 'left', marginTop: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: C.white, marginBottom: 1 }}>🗓️ Tengo un evento — adaptar mi plan</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>Boda, viaje, cena social o salté el plan</div>
+            </div>
+            <span style={{ fontSize: 18, color: C.white }}>→</span>
+          </div>
+        </button>
+        <div style={{ background: '#1A2535', borderRadius: 14, padding: '12px 16px', marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, color: C.white }}>Seguimiento mensual</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>19,90€/mes · Cancela cuando quieras</div>
+          </div>
+          <a href="#" style={{ background: C.white, color: '#1A2535', padding: '6px 14px', borderRadius: 100, fontSize: 11, fontWeight: 700, textDecoration: 'none' }}>Activar →</a>
+        </div>
+        <details style={{ borderRadius: 14, overflow: 'hidden', border: `1px solid rgba(255,255,255,0.08)`, marginTop: 10 }}>
+          <summary style={{ background: '#2D3E50', padding: '11px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: font, fontSize: 12, fontWeight: 600, color: '#F1F5F9', userSelect: 'none' }}>
+            <span>📊 Reporte analítico</span>
+            <span className="chevron" style={{ fontSize: 12, color: C.mid }}>▾</span>
+          </summary>
+          <div style={{ padding: '12px', background: '#1E293B', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: '#263447', borderRadius: 12, padding: 14, border: `1px solid rgba(255,255,255,0.08)` }}>
+              <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>🚀 Tu potencial de mejora</div>
+              {[{ icon: '⚡', label: 'Actividad física', val: ultimo.efh_score, anos: 3 }, { icon: '🏋️', label: 'Composición corporal', val: ultimo.eco_score, anos: 4 }, { icon: '🥗', label: 'Nutrición', val: ultimo.nut_score, anos: 2 }, { icon: '😴', label: 'Descanso', val: ultimo.des_score, anos: 3 }, { icon: '🧠', label: 'Vitalidad', val: ultimo.vit_score, anos: 2 }].sort((a, b) => a.val - b.val).map((s, i) => {
+                const col = s.val >= 65 ? C.accent : s.val >= 50 ? '#F9A825' : C.orange;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, flexShrink: 0 }}>{s.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ fontSize: 10, color: '#94A3B8' }}>{s.label}</span>
+                        <span style={{ fontSize: 10, color: col, fontWeight: 700 }}>{s.val}/100</span>
+                      </div>
+                      <div style={{ height: 4, background: C.light, borderRadius: 100, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${s.val}%`, background: col, borderRadius: 100 }} />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 9, color: col, fontWeight: 700, background: `${col}20`, border: `1px solid ${col}44`, padding: '2px 6px', borderRadius: 100, whiteSpace: 'nowrap' }}>-{s.anos}a</div>
+                  </div>
+                );
+              })}
+            </div>
+            {datos.length > 1 && (
+              <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, borderRadius: 12, padding: 14 }}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>Evolución del ICM</div>
+                <svg viewBox="0 0 680 110" style={{ width: '100%', height: 90 }}>
+                  <defs><linearGradient id="aG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.white} stopOpacity="0.25" /><stop offset="100%" stopColor={C.white} stopOpacity="0" /></linearGradient></defs>
+                  {areaD && <path d={areaD} fill="url(#aG)" />}
+                  {pathD && <path d={pathD} fill="none" stroke={C.white} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+                  {chartData?.map((p, i) => (<g key={i}><circle cx={p.x*6.8} cy={p.y*1.1} r="5" fill={i===chartData.length-1 ? C.orange : C.white} stroke={C.accent} strokeWidth="2" /><text x={p.x*6.8} y={p.y*1.1-10} textAnchor="middle" fontSize="10" fill={C.white} fontWeight="600">{p.icm}</text></g>))}
+                </svg>
+              </div>
+            )}
+            {/* Veredicto Banana */}
+            <div style={{ background: '#263447', border: `1px solid rgba(255,255,255,0.08)`, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ fontSize: 14 }}>🍌</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.white, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Veredicto semanal</span>
+              </div>
+              <div style={{ padding: '12px' }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                  {['L','M','X','J','V','S','D'].map((dia, i) => {
+                    const estado = reporteBanana.adherencia[i] || 'gris';
+                    const cols = { verde: { bg: '#D1FAE5', border: '#34D399', text: '#065F46' }, naranja: { bg: '#FEF3C7', border: '#FBBF24', text: '#92400E' }, rojo: { bg: '#FEE2E2', border: '#F87171', text: '#991B1B' }, gris: { bg: '#F3F4F6', border: '#D1D5DB', text: '#9CA3AF' } };
+                    const col = cols[estado] || cols.gris;
+                    return (
+                      <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ width: '100%', aspectRatio: '1', borderRadius: 5, background: col.bg, border: `1.5px solid ${col.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}>
+                          {estado === 'verde' && <span style={{ fontSize: 9 }}>✓</span>}
+                          {estado === 'naranja' && <span style={{ fontSize: 9 }}>~</span>}
+                          {estado === 'rojo' && <span style={{ fontSize: 9 }}>✕</span>}
+                          {estado === 'gris' && <span style={{ fontSize: 7, color: col.text }}>·</span>}
+                        </div>
+                        <div style={{ fontSize: 7, color: col.text, fontWeight: 600 }}>{dia}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {reporteBanana.analisis ? (
+                  <div style={{ background: '#1E293B', borderRadius: 8, padding: '9px 10px', display: 'flex', gap: 7 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>🍌</span>
+                    <p style={{ margin: 0, fontSize: 11, color: '#94A3B8', lineHeight: 1.6, fontStyle: 'italic' }}>{reporteBanana.analisis}</p>
+                  </div>
+                ) : (
+                  <button onClick={() => enviarMensaje('¿Cómo voy esta semana? Dame tu veredicto.')} style={{ width: '100%', background: 'none', border: `1.5px dashed rgba(255,255,255,0.12)`, borderRadius: 8, padding: '9px', cursor: 'pointer', fontFamily: font, display: 'flex', gap: 7, alignItems: 'center', color: '#64748B', fontSize: 11 }}>
+                    <span style={{ fontSize: 14 }}>🍌</span>
+                    <span>Pedir veredicto semanal →</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: font }}>
+    <div style={{ minHeight: '100dvh', background: C.bg, fontFamily: font }}>
 
       {mostrarConfig && (
         <ConfiguracionMetabolica ultimo={ultimo} email={email} gastoActividadExtra={gastoActividadExtra}
@@ -1069,9 +1404,7 @@ export default function Dashboard() {
         <span style={{ fontWeight: 900, fontSize: 17, color: C.white, flexShrink: 0 }}>🍌 <span style={{ color: 'rgba(255,255,255,0.9)' }}>my</span><span style={{ color: C.white }}>metaboliq</span></span>
         {datos && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* Nombre solo en desktop */}
             <span className="hide-mobile" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>{nombreUsuario && `Hola, ${nombreUsuario} 👋`}</span>
-            {/* Semana: icono en móvil, texto en desktop */}
             {planSemanal && (
               <button onClick={() => setMostrarSemana(true)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, padding: '6px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>
                 <span className="hide-mobile">🛒 Semana</span>
@@ -1086,360 +1419,117 @@ export default function Dashboard() {
 
       {/* LOGIN */}
       {!datos && (
-        <div style={{ textAlign: 'center', paddingTop: 60, padding: '60px 20px' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>🍌</div>
-          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: C.dark, marginBottom: 8 }}>Tu dashboard <span style={{ color: C.accent, fontStyle: 'italic' }}>metabólico</span></h1>
-          <p style={{ fontSize: 14, color: C.mid, marginBottom: 8, lineHeight: 1.7 }}>Introduce el email con el que hiciste el test.</p>
-          <p style={{ fontSize: 13, color: C.mid, marginBottom: 28 }}>¿Primera vez? <a href="/onboarding" style={{ color: C.accent, fontWeight: 700, textDecoration: 'none' }}>Empieza aquí →</a></p>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: '#F1F5F9', marginBottom: 8 }}>Tu dashboard <span style={{ color: C.accent, fontStyle: 'italic' }}>metabólico</span></h1>
+          <p style={{ fontSize: 14, color: '#94A3B8', marginBottom: 8, lineHeight: 1.7 }}>Introduce el email con el que hiciste el test.</p>
+          <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 28 }}>¿Primera vez? <a href="/onboarding" style={{ color: '#5BC4D8', fontWeight: 700, textDecoration: 'none' }}>Empieza aquí →</a></p>
           <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto' }}>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscarDatos()} placeholder="tu@email.com"
-              style={{ flex: 1, padding: '12px 18px', border: `1.5px solid ${C.light}`, borderRadius: 100, fontSize: 16, background: C.white, fontFamily: font, outline: 'none', color: C.dark }} />
+              style={{ flex: 1, padding: '12px 18px', border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 100, fontSize: 16, background: '#263447', fontFamily: font, outline: 'none', color: '#F1F5F9' }} />
             <button onClick={buscarDatos} disabled={cargando} style={{ background: C.accent, color: C.white, border: 'none', padding: '12px 22px', borderRadius: 100, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>{cargando ? '...' : 'Ver →'}</button>
           </div>
           {error && <p style={{ color: C.orange, fontSize: 13, marginTop: 14 }}>{error}</p>}
         </div>
       )}
 
-      {/* ── FAB MÓVIL — solo visible en pantallas pequeñas ── */}
+      {/* ── DESKTOP: 3 columnas ── */}
       {datos && ultimo && (
-        <>
-          {/* Botón flotante */}
-          <button
-            className="show-mobile"
-            onClick={() => setIsMobileChatOpen(true)}
-            style={{
-              position: 'fixed', bottom: 24, right: 24, zIndex: 50,
-              width: 56, height: 56, borderRadius: '50%',
-              background: C.accent, border: 'none',
-              boxShadow: '0 4px 20px rgba(24,119,143,0.45)',
-              cursor: 'pointer', fontSize: 26,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'transform 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            🍌
-          </button>
-
-          {/* Overlay oscuro */}
-          {isMobileChatOpen && (
-            <div
-              className="show-mobile"
-              onClick={() => setIsMobileChatOpen(false)}
-              style={{
-                position: 'fixed', inset: 0, zIndex: 55,
-                background: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(2px)',
-              }}
-            />
-          )}
-
-          {/* Panel chat móvil — slide up */}
-          <div
-            className="show-mobile"
-            style={{
-              position: 'fixed', inset: '0 0 0 0', zIndex: 60,
-              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-              pointerEvents: isMobileChatOpen ? 'all' : 'none',
-            }}
-          >
-            <div style={{
-              background: C.white,
-              borderRadius: '20px 20px 0 0',
-              height: '85dvh',
-              display: 'flex', flexDirection: 'column',
-              transform: isMobileChatOpen ? 'translateY(0)' : 'translateY(100%)',
-              transition: 'transform 0.35s cubic-bezier(0.32,0.72,0,1)',
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
-              overflow: 'hidden',
-            }}>
-              {/* Handle / barra de cierre */}
-              <div style={{
-                background: C.accent, padding: '12px 16px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                flexShrink: 0,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>🍌</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: C.white }}>Banana</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>Tu coach metabólico</div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsMobileChatOpen(false)}
-                  style={{
-                    background: 'rgba(255,255,255,0.2)', border: 'none',
-                    color: C.white, width: 32, height: 32,
-                    borderRadius: '50%', fontSize: 16,
-                    cursor: 'pointer', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
-                >✕</button>
-              </div>
-
-              {/* Mensajes + input */}
-              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <BananaChat
-                  mensajes={mensajesChat} input={inputChat} setInput={setInputChat}
-                  cargando={chatCargando} onEnviar={enviarMensaje}
-                  chatEndRef={chatEndRef} inline={true}
-                />
-              </div>
-            </div>
-          </div>
-        </>
+        <div className="dashboard-grid">
+          {/* SIDEBAR: perfil + check-in */}
+          <div className="col-sidebar">{renderSidebar()}</div>
+          {/* CHAT: Banana protagonista */}
+          <div className="col-chat">{renderChat()}</div>
+          {/* TIMELINE: plan del día */}
+          <div className="col-timeline">{renderTimeline()}</div>
+        </div>
       )}
 
-      {/* DASHBOARD — Layout híbrido */}
+      {/* ── MÓVIL: tab bar ── */}
       {datos && ultimo && (
-        <div className="dashboard-grid" style={{ background: '#ffffff' }}>
-
-          {/* ── COLUMNA IZQUIERDA: Banana + Check-in + Hero ICM ── */}
-          <div className="col-left" style={{ background: '#0F2A35' }}>
-
-            {/* Hero ICM compacto */}
-            <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, borderRadius: 16, padding: '16px', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>ICM · Calidad Metabólica</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>{icmLabel(ultimo.icm_total)}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 38, color: C.white, lineHeight: 1 }}>{ultimo.icm_total}<span style={{ fontSize: 13, opacity: 0.6 }}>/100</span></div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>Edad metab. <strong style={{ color: C.white }}>{ultimo.edad_metabolica}</strong></div>
-                </div>
+        <div className="mobile-layout">
+          <div className="tab-content">
+            {activeTab === 'chat' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 56px - 58px)', overflow: 'hidden' }}>
+                {renderChat()}
               </div>
-              <div style={{ height: 5, background: 'rgba(255,255,255,0.25)', borderRadius: 100, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${ultimo.icm_total}%`, background: C.white, borderRadius: 100 }} />
-              </div>
-              {/* Scores mini */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 4, marginTop: 10 }}>
-                {[{ icon: '⚡', val: ultimo.efh_score }, { icon: '🏋️', val: ultimo.eco_score }, { icon: '🥗', val: ultimo.nut_score }, { icon: '🧠', val: ultimo.vit_score }, { icon: '😴', val: ultimo.des_score }].map((s, i) => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 7, padding: '5px 3px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11 }}>{s.icon}</div>
-                    <div style={{ fontSize: 12, color: C.white, fontWeight: 700, fontFamily: 'Georgia, serif' }}>{s.val}</div>
+            )}
+            {activeTab === 'hoy' && (
+              <div style={{ padding: '12px 12px 0' }}>
+                {planSemanal && <KcalTracker planSemanal={planSemanal} completedTasks={completedTasksHoy} planDiario={planDiario} objetivoId={objetivoId} gastoExtra={gastoActividadExtra} ingestaExtra={ingestaExtraDia} />}
+                <DailyTimeline
+                  planSemanal={planSemanal} setPlanSemanal={setPlanSemanal}
+                  planDiario={planDiario} setPlanDiario={setPlanDiario}
+                  email={email} objetivoId={objetivoId}
+                  onAbrirConfig={() => setMostrarConfig(true)}
+                  onTodoCompletado={() => setMensajesChat(prev => [...prev, { rol: 'bot', texto: '¡Día perfecto! 🎉', cargando: false }])}
+                  onGenerarPlan={generarPlan} cargandoPlan={cargandoPlan}
+                  objetivo={OBJETIVOS.find(o => o.id === objetivoId)}
+                  onChecksChange={checks => setCompletedTasksHoy(checks)}
+                  onGastoActividadChange={delta => setGastoActividadExtra(prev => prev + delta)}
+                  onIngestaExtra={delta => setIngestaExtraDia(prev => prev + delta)}
+                  presupuestoBase={presupuestoBase} onKcalConsumidas={() => {}}
+                  modoRescate={modoRescateActivo} protocolos={protocolos}
+                />
+                <button onClick={() => setMostrarSuperBoton(true)} style={{ background: `linear-gradient(135deg,#E65100,${C.orange})`, border: 'none', borderRadius: 14, padding: '12px 16px', cursor: 'pointer', fontFamily: font, width: '100%', textAlign: 'left', marginTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: C.white }}>🗓️ Adaptar plan al evento</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>Boda, viaje, lesión...</div>
+                    </div>
+                    <span style={{ color: C.white, fontSize: 18 }}>→</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Racha */}
-            {streak > 0 && (
-              <div style={{ background: streak >= 7 ? C.accent : C.panel, borderRadius: 12, padding: '10px 14px', marginBottom: 12, border: `1px solid ${streak >= 7 ? C.accent : C.light}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>{streak >= 7 ? '🔥' : '⚡'}</span>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: streak >= 7 ? C.white : C.accent, fontFamily: 'Georgia, serif' }}>{streak} días de racha</div>
-                  <div style={{ fontSize: 10, color: streak >= 7 ? 'rgba(255,255,255,0.75)' : C.mid }}>{streak >= 7 ? '¡Racha semanal activa!' : `${7 - streak} días para la semanal`}</div>
-                </div>
+                </button>
               </div>
             )}
-
-            {/* Micro check-in */}
-            <MicroCheckIn email={email} onCheckinChange={setCheckinTexto} onBananaReactivo={handleCheckinReactivo} />
-
-            {/* Banana chat — solo visible en desktop (móvil usa FAB) */}
-            <div className="hide-mobile" style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.light}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <BananaChat
-                mensajes={mensajesChat} input={inputChat} setInput={setInputChat}
-                cargando={chatCargando} onEnviar={enviarMensaje}
-                chatEndRef={chatEndRef} inline={true}
-              />
-            </div>
-
-          </div>
-
-          {/* ── COLUMNA DERECHA: Timeline + acciones ── */}
-          <div className="col-right" style={{ background: '#ffffff' }}>
-
-            {/* Centro de Mando Calórico */}
-            {planSemanal && (
-              <KcalTracker planSemanal={planSemanal} completedTasks={completedTasksHoy} />
-            )}
-
-            <DailyTimeline
-              planSemanal={planSemanal} setPlanSemanal={setPlanSemanal}
-              planDiario={planDiario} setPlanDiario={setPlanDiario}
-              email={email} objetivoId={objetivoId}
-              onAbrirConfig={() => setMostrarConfig(true)}
-              onTodoCompletado={() => { setMensajesChat(prev => [...prev, { rol: 'bot', texto: '¡Día perfecto completado! 🎉 Tu metabolismo te lo agradecerá mañana.', cargando: false }]); }}
-              onGenerarPlan={generarPlan} cargandoPlan={cargandoPlan}
-              objetivo={OBJETIVOS.find(o => o.id === objetivoId)}
-              onChecksChange={checks => setCompletedTasksHoy(checks)}
-              onGastoActividadChange={delta => setGastoActividadExtra(prev => prev + delta)}
-              presupuestoBase={presupuestoBase}
-              onKcalConsumidas={() => {}}
-              modoRescate={modoRescateActivo}
-              protocolos={protocolos}
-            />
-
-            {/* Super-botón */}
-            <button onClick={() => setMostrarSuperBoton(true)} style={{ background: `linear-gradient(135deg,#E65100,${C.orange})`, border: 'none', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', fontFamily: font, width: '100%', textAlign: 'left', marginTop: 16, animation: 'borderPulse 2.5s ease infinite' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: C.white, marginBottom: 2 }}>🗓️ Tengo un evento — adaptar mi plan</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Boda, viaje, cena social o salté el plan</div>
-                </div>
-                <span style={{ fontSize: 22, color: C.white }}>→</span>
-              </div>
-            </button>
-
-            {/* CTA suscripción */}
-            <div style={{ background: C.slate, borderRadius: 14, padding: '14px 18px', marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-              <div>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, color: C.white }}>Seguimiento mensual</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>19,90€/mes · Cancela cuando quieras</div>
-              </div>
-              <a href="#" style={{ background: C.white, color: C.slate, padding: '7px 16px', borderRadius: 100, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Activar →</a>
-            </div>
-
-            {/* Analítica colapsada */}
-            <details style={{ borderRadius: 14, overflow: 'hidden', border: `1px solid ${C.light}`, marginTop: 12 }}>
-              <summary style={{ background: C.white, padding: '13px 18px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: font, fontSize: 13, fontWeight: 600, color: C.dark, userSelect: 'none' }}>
-                <span>📊 Reporte analítico</span>
-                <span className="chevron" style={{ fontSize: 14, color: C.mid }}>▾</span>
-              </summary>
-              <div style={{ padding: '14px', background: C.bg, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-                {/* Potencial de mejora — siempre visible */}
-                <div style={{ background: C.white, borderRadius: 12, padding: 16, border: `1px solid ${C.light}` }}>
-                  <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>🚀 Tu potencial de mejora</div>
-                  {[
-                    { icon: '⚡', label: 'Actividad física',    val: ultimo.efh_score, anos: 3 },
-                    { icon: '🏋️', label: 'Composición corporal',val: ultimo.eco_score, anos: 4 },
-                    { icon: '🥗', label: 'Nutrición',           val: ultimo.nut_score, anos: 2 },
-                    { icon: '😴', label: 'Descanso',            val: ultimo.des_score, anos: 3 },
-                    { icon: '🧠', label: 'Vitalidad',           val: ultimo.vit_score, anos: 2 },
-                  ].sort((a, b) => a.val - b.val).map((s, i) => {
+            {activeTab === 'perfil' && (
+              <div style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {renderSidebar()}
+                {/* Analítica en perfil móvil */}
+                <div style={{ background: '#263447', borderRadius: 12, padding: 14, border: `1px solid rgba(255,255,255,0.08)`, marginTop: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📊 Tu potencial</div>
+                  {[{ icon: '⚡', label: 'Actividad física', val: ultimo.efh_score }, { icon: '🥗', label: 'Nutrición', val: ultimo.nut_score }, { icon: '😴', label: 'Descanso', val: ultimo.des_score }].map((s, i) => {
                     const col = s.val >= 65 ? C.accent : s.val >= 50 ? '#F9A825' : C.orange;
                     return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-                        <span style={{ fontSize: 14, flexShrink: 0 }}>{s.icon}</span>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 14 }}>{s.icon}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <span style={{ fontSize: 11, color: C.dark }}>{s.label}</span>
+                            <span style={{ fontSize: 11, color: '#94A3B8' }}>{s.label}</span>
                             <span style={{ fontSize: 11, color: col, fontWeight: 700 }}>{s.val}/100</span>
                           </div>
-                          <div style={{ height: 5, background: C.light, borderRadius: 100, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${s.val}%`, background: col, borderRadius: 100, transition: 'width 0.6s ease' }} />
+                          <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 100, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${s.val}%`, background: col, borderRadius: 100 }} />
                           </div>
-                        </div>
-                        <div style={{ fontSize: 9, color: col, fontWeight: 700, background: `${col}15`, border: `1px solid ${col}44`, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-                          -{s.anos} años
                         </div>
                       </div>
                     );
                   })}
-                  <div style={{ marginTop: 4, padding: '8px 12px', background: C.panel, borderRadius: 8, fontSize: 11, color: C.mid, lineHeight: 1.5 }}>
-                    💡 ICM potencial: <strong style={{ color: C.accent }}>{Math.min(100, Math.round(ultimo.icm_total * 1.18))}/100</strong> mejorando tus 2 bloques más bajos
-                  </div>
                 </div>
-
-                {/* Evolución — solo si hay más de 1 test */}
-                {datos.length > 1 && (
-                  <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, borderRadius: 12, padding: 16 }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>Evolución del ICM</div>
-                    <svg viewBox="0 0 680 110" style={{ width: '100%', height: 100 }}>
-                      <defs><linearGradient id="aG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.white} stopOpacity="0.25" /><stop offset="100%" stopColor={C.white} stopOpacity="0" /></linearGradient></defs>
-                      {areaD && <path d={areaD} fill="url(#aG)" />}
-                      {pathD && <path d={pathD} fill="none" stroke={C.white} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
-                      {chartData?.map((p, i) => (<g key={i}><circle cx={p.x*6.8} cy={p.y*1.1} r="5" fill={i===chartData.length-1 ? C.orange : C.white} stroke={C.accent} strokeWidth="2" /><text x={p.x*6.8} y={p.y*1.1-10} textAnchor="middle" fontSize="10" fill={C.white} fontWeight="600">{p.icm}</text></g>))}
-                    </svg>
+                <div style={{ background: '#1A2535', borderRadius: 14, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, color: C.white }}>Seguimiento mensual</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>19,90€/mes</div>
                   </div>
-                )}
-
-                {/* Historial — solo si hay más de 1 test */}
-                {datos.length > 1 && (
-                  <div style={{ background: C.white, borderRadius: 12, padding: 14, border: `1px solid ${C.light}` }}>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, color: C.dark, marginBottom: 12 }}>Historial de tests</div>
-                    {[...datos].reverse().map((t, i) => (
-                      <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < datos.length - 1 ? `1px solid ${C.light}` : 'none' }}>
-                        <div>
-                          <div style={{ fontSize: 12, color: C.dark }}>{formatFecha(t.fecha)}{i===0 && <span style={{ fontSize: 9, background: C.greenPale, color: C.accent, padding: '1px 7px', borderRadius: 100, marginLeft: 6 }}>Último</span>}</div>
-                          <div style={{ fontSize: 10, color: C.mid }}>Edad metabólica: {t.edad_metabolica} años</div>
-                        </div>
-                        <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: icmColor(t.icm_total) }}>{t.icm_total}<span style={{ fontSize: 9, color: C.mid }}>/100</span></div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Veredicto Semanal de Banana */}
-                <div style={{ background: C.panel, border: `1px solid ${C.light}`, borderRadius: 12, overflow: 'hidden' }}>
-                  {/* Header */}
-                  <div style={{ background: `linear-gradient(135deg,${C.accent},${C.accentDk})`, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>🍌</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: C.white, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Veredicto semanal de Banana</span>
-                  </div>
-
-                  <div style={{ padding: '14px' }}>
-                    {/* Mapa de adherencia — 7 días Lun→Dom */}
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 9, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Adherencia esta semana</div>
-                      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                        {['L','M','X','J','V','S','D'].map((dia, i) => {
-                          const estado = reporteBanana.adherencia[i] || 'gris';
-                          const colores = {
-                            verde:   { bg: '#D1FAE5', border: '#34D399', text: '#065F46' },
-                            naranja: { bg: '#FEF3C7', border: '#FBBF24', text: '#92400E' },
-                            rojo:    { bg: '#FEE2E2', border: '#F87171', text: '#991B1B' },
-                            gris:    { bg: '#F3F4F6', border: '#D1D5DB', text: '#9CA3AF' },
-                          };
-                          const col = colores[estado] || colores.gris;
-                          return (
-                            <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-                              <div style={{ width: '100%', aspectRatio: '1', borderRadius: 6, background: col.bg, border: `1.5px solid ${col.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 3 }}>
-                                {estado === 'verde'   && <span style={{ fontSize: 10 }}>✓</span>}
-                                {estado === 'naranja' && <span style={{ fontSize: 10 }}>~</span>}
-                                {estado === 'rojo'    && <span style={{ fontSize: 10 }}>✕</span>}
-                                {estado === 'gris'    && <span style={{ fontSize: 8, color: col.text }}>·</span>}
-                              </div>
-                              <div style={{ fontSize: 8, color: col.text, fontWeight: 600 }}>{dia}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Leyenda */}
-                      <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-                        {[
-                          { color: '#34D399', label: 'En objetivo' },
-                          { color: '#FBBF24', label: 'Exceso' },
-                          { color: '#F87171', label: 'Fallo' },
-                          { color: '#D1D5DB', label: 'Pendiente' },
-                        ].map((l, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: 2, background: l.color }} />
-                            <span style={{ fontSize: 9, color: '#9CA3AF' }}>{l.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Análisis de Banana */}
-                    {reporteBanana.analisis ? (
-                      <div style={{ background: C.white, borderRadius: 9, padding: '10px 12px', border: `1px solid ${C.light}`, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: 16, flexShrink: 0 }}>🍌</span>
-                        <p style={{ margin: 0, fontSize: 12, color: C.dark, lineHeight: 1.65, fontStyle: 'italic' }}>
-                          {reporteBanana.analisis}
-                        </p>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => enviarMensaje('¿Cómo voy esta semana? Dame tu veredicto.')}
-                        style={{ width: '100%', background: 'none', border: `1.5px dashed ${C.light}`, borderRadius: 9, padding: '10px 12px', cursor: 'pointer', fontFamily: font, display: 'flex', gap: 8, alignItems: 'center', color: '#9CA3AF', fontSize: 12 }}
-                      >
-                        <span style={{ fontSize: 16 }}>🍌</span>
-                        <span>Pregúntame cómo vas esta semana →</span>
-                      </button>
-                    )}
-                  </div>
+                  <a href="#" style={{ background: C.white, color: '#1A2535', padding: '6px 14px', borderRadius: 100, fontSize: 11, fontWeight: 700, textDecoration: 'none' }}>Activar →</a>
                 </div>
-
               </div>
-            </details>
-
+            )}
           </div>
+
+          {/* TAB BAR */}
+          <nav className="tab-bar">
+            {[
+              { id: 'hoy',    icon: '📋', label: 'Hoy' },
+              { id: 'chat',   icon: '🍌', label: 'Banana' },
+              { id: 'perfil', icon: '👤', label: 'Perfil' },
+            ].map(tab => (
+              <button key={tab.id} className={`tab-btn${activeTab === tab.id ? ' active' : ''}`} onClick={() => setActiveTab(tab.id)}>
+                <span className="tab-icon" style={{ filter: activeTab === tab.id ? 'none' : 'grayscale(1) opacity(0.5)' }}>{tab.icon}</span>
+                <span className="tab-label" style={{ color: activeTab === tab.id ? '#18778f' : '#64748B' }}>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
         </div>
       )}
     </div>
