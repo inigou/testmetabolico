@@ -121,19 +121,21 @@ const OBJETIVOS = [
   { id: 'perdida_rapida',      emoji: '⚡', nombre: 'Pérdida rápida' },
 ];
 
-// ── Micro Check-in widget con debounce reactivo ──────────────────────
+// ── Micro Check-in widget — confirmación manual ─────────────────────
 function MicroCheckIn({ email, onCheckinChange, onBananaReactivo }) {
   const hoy = () => new Date().toISOString().split('T')[0];
-  const [energia, setEnergia]       = useState(7);
-  const [sueno, setSueno]           = useState(7);
-  const [estres, setEstres]         = useState(4);
-  const [guardado, setGuardado]     = useState(false);
-  const [cargando, setCargando]     = useState(false);
-  const debounceRef                 = useRef(null);
+  const [energia, setEnergia]   = useState(7);
+  const [sueno, setSueno]       = useState(7);
+  const [estres, setEstres]     = useState(4);
+  const [guardado, setGuardado] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [mostrarConfirm, setMostrarConfirm] = useState(false);
 
-  // Cargar del localStorage al montar
+  // Carga inicial: Supabase primero, localStorage como fallback instantáneo
   useEffect(() => {
     if (!email) return;
+
+    // 1. Fallback visual inmediato desde localStorage
     try {
       const cached = JSON.parse(localStorage.getItem(`checkin_${email}_${hoy()}`) || '{}');
       if (cached.energia != null) {
@@ -142,58 +144,129 @@ function MicroCheckIn({ email, onCheckinChange, onBananaReactivo }) {
         onCheckinChange?.(`Energía ${cached.energia}/10 · Sueño ${cached.sueno}/10 · Estrés ${cached.estres}/10`);
       }
     } catch {}
+
+    // 2. Supabase sobreescribe — fuente de verdad cross-device
+    const fetchBD = async () => {
+      try {
+        const res = await fetch(
+          `${SB_URL}/rest/v1/daily_logs?email=eq.${encodeURIComponent(email)}&fecha=eq.${hoy()}&select=energia,sueno,estres&limit=1`,
+          { headers: sbH }
+        );
+        const rows = await res.json();
+        if (rows?.[0]?.energia != null) {
+          const r = rows[0];
+          setEnergia(r.energia); setSueno(r.sueno); setEstres(r.estres);
+          setGuardado(true);
+          const str = `Energía ${r.energia}/10 · Sueño ${r.sueno}/10 · Estrés ${r.estres}/10`;
+          onCheckinChange?.(str);
+          try { localStorage.setItem(`checkin_${email}_${hoy()}`, JSON.stringify({ energia: r.energia, sueno: r.sueno, estres: r.estres, fecha: hoy() })); } catch {}
+        }
+      } catch {}
+    };
+    fetchBD();
   }, [email]);
 
-  // Debounce: al cambiar sliders → guardar + disparar Banana
-  const handleSliderChange = (setter, campo, valor) => {
-    setter(valor);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      const vals = { energia, sueno, estres, [campo]: valor };
-      const checkinStr = `Energía ${vals.energia}/10 · Sueño ${vals.sueno}/10 · Estrés ${vals.estres}/10`;
-      // Guardar en localStorage
-      try { localStorage.setItem(`checkin_${email}_${hoy()}`, JSON.stringify({ ...vals, fecha: hoy() })); } catch {}
-      // Guardar en BD en background (sin await para no bloquear)
-      upsertCheckInBD(email, vals.energia, vals.sueno, vals.estres);
-      setGuardado(true);
-      onCheckinChange?.(checkinStr);
-      // Disparar Banana reactivo
-      onBananaReactivo?.(checkinStr);
-    }, 1500);
+  const confirmarCheckin = async () => {
+    setMostrarConfirm(false);
+    setGuardando(true);
+    const checkinStr = `Energía ${energia}/10 · Sueño ${sueno}/10 · Estrés ${estres}/10`;
+    // Guardar en localStorage
+    try { localStorage.setItem(`checkin_${email}_${hoy()}`, JSON.stringify({ energia, sueno, estres, fecha: hoy() })); } catch {}
+    // Guardar en Supabase
+    await upsertCheckInBD(email, energia, sueno, estres);
+    setGuardado(true);
+    setGuardando(false);
+    onCheckinChange?.(checkinStr);
+    onBananaReactivo?.(checkinStr);
   };
 
-  const colorE = v => v >= 7 ? C.accent : v >= 4 ? '#F9A825' : C.orange;
-  const colorS = v => v >= 7 ? C.accent : v >= 4 ? '#F9A825' : C.orange;
+  const colorE  = v => v >= 7 ? C.accent : v >= 4 ? '#F9A825' : C.orange;
+  const colorS  = v => v >= 7 ? C.accent : v >= 4 ? '#F9A825' : C.orange;
   const colorSt = v => v <= 3 ? C.accent : v <= 6 ? '#F9A825' : C.orange;
 
   return (
-    <div style={{ background: C.panel, borderRadius: 14, padding: '14px 16px', border: `1px solid ${C.light}`, marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          ⚡ Check-in de hoy
-        </div>
-        {guardado && (
-          <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-            {cargando ? '⏳ Banana analizando...' : '✓ Guardado'}
+    <>
+      {/* Popup de confirmación */}
+      {mostrarConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 24px' }}>
+          <div onClick={() => setMostrarConfirm(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }} />
+          <div style={{ position: 'relative', zIndex: 1, background: C.white, borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 400, boxShadow: '0 -4px 40px rgba(0,0,0,0.18)', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: C.dark, marginBottom: 6 }}>Confirmar check-in</div>
+            <div style={{ fontSize: 13, color: C.mid, marginBottom: 20, lineHeight: 1.6 }}>
+              Energía <strong style={{ color: colorE(energia) }}>{energia}/10</strong> · Sueño <strong style={{ color: colorS(sueno) }}>{sueno}/10</strong> · Estrés <strong style={{ color: colorSt(estres) }}>{estres}/10</strong>
+            </div>
+            <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 20 }}>
+              Una vez guardado, Banana analizará tu estado y no podrás modificarlo hoy.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setMostrarConfirm(false)} style={{ flex: 1, background: C.panel, border: `1px solid ${C.light}`, color: C.mid, padding: '12px', borderRadius: 100, fontSize: 13, cursor: 'pointer', fontFamily: font }}>
+                Ajustar
+              </button>
+              <button onClick={confirmarCheckin} style={{ flex: 2, background: C.accent, color: C.white, border: 'none', padding: '12px', borderRadius: 100, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>
+                Confirmar y enviar a Banana →
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+
+      <div style={{ background: C.panel, borderRadius: 14, padding: '14px 16px', border: `1px solid ${C.light}`, marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.slate, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            ⚡ Check-in de hoy
+          </div>
+          {guardado && (
+            <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+              ✓ Guardado
+            </div>
+          )}
+        </div>
+
+        {guardado ? (
+          // Vista compacta si ya está guardado
+          <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+            {[
+              { emoji: '⚡', label: 'Energía', val: energia, color: colorE(energia) },
+              { emoji: '😴', label: 'Sueño',   val: sueno,   color: colorS(sueno)   },
+              { emoji: '🧠', label: 'Estrés',  val: estres,  color: colorSt(estres) },
+            ].map((s, i) => (
+              <div key={i} style={{ flex: 1, background: C.white, borderRadius: 10, padding: '8px 6px', textAlign: 'center', border: `1px solid ${C.light}` }}>
+                <div style={{ fontSize: 13 }}>{s.emoji}</div>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.val}</div>
+                <div style={{ fontSize: 9, color: C.mid, marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Vista editable con sliders
+          <>
+            {[
+              { label: 'Energía', val: energia, set: setEnergia, color: colorE(energia),  emoji: '⚡' },
+              { label: 'Sueño',   val: sueno,   set: setSueno,   color: colorS(sueno),    emoji: '😴' },
+              { label: 'Estrés',  val: estres,  set: setEstres,  color: colorSt(estres),  emoji: '🧠' },
+            ].map((s, i) => (
+              <div key={i} style={{ marginBottom: i < 2 ? 10 : 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: C.mid }}>{s.emoji} {s.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: 'Georgia, serif' }}>{s.val}</span>
+                </div>
+                <input type="range" min="1" max="10" step="1" value={s.val}
+                  onChange={e => s.set(+e.target.value)}
+                  style={{ width: '100%', accentColor: s.color, height: 4, cursor: 'pointer', touchAction: 'pan-x', fontSize: 16 }} />
+              </div>
+            ))}
+            <button
+              onClick={() => setMostrarConfirm(true)}
+              disabled={guardando}
+              style={{ width: '100%', background: guardando ? C.accentLt : C.accent, color: C.white, border: 'none', borderRadius: 100, padding: '11px', fontSize: 13, fontWeight: 700, cursor: guardando ? 'not-allowed' : 'pointer', fontFamily: font, transition: 'background 0.2s' }}
+            >
+              {guardando ? '⏳ Guardando...' : 'Guardar check-in →'}
+            </button>
+          </>
         )}
       </div>
-      {[
-        { label: 'Energía', val: energia, set: v => handleSliderChange(setEnergia, 'energia', v), color: colorE(energia), emoji: '⚡' },
-        { label: 'Sueño',   val: sueno,   set: v => handleSliderChange(setSueno,   'sueno',   v), color: colorS(sueno),   emoji: '😴' },
-        { label: 'Estrés',  val: estres,  set: v => handleSliderChange(setEstres,  'estres',  v), color: colorSt(estres), emoji: '🧠' },
-      ].map((s, i) => (
-        <div key={i} style={{ marginBottom: i < 2 ? 10 : 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: C.mid }}>{s.emoji} {s.label}</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: 'Georgia, serif' }}>{s.val}</span>
-          </div>
-          <input type="range" min="1" max="10" step="1" value={s.val}
-            onChange={e => s.set(+e.target.value)}
-            style={{ width: '100%', accentColor: s.color, height: 4, cursor: 'pointer', touchAction: 'pan-x' }} />
-        </div>
-      ))}
-    </div>
+    </>
   );
 }
 
@@ -480,6 +553,7 @@ export default function Dashboard() {
   const [modoRescateActivo, setModoRescateActivo]     = useState(false);
   const [nombreUsuario, setNombreUsuario]             = useState('');
   const [checkinTexto, setCheckinTexto]               = useState('');
+  const [planDiario, setPlanDiario]                   = useState([]);  // Táctica del día — construido por Banana
   const [protocolos, setProtocolos]                   = useState(['🔥 Déficit activo', '💧 Hidratación prioritaria']);
   const [reporteBanana, setReporteBanana]             = useState({
     analisis: null,
@@ -537,6 +611,11 @@ export default function Dashboard() {
         if (checkin.energia != null) {
           const str = `Energía ${checkin.energia}/10 · Sueño ${checkin.sueno}/10 · Estrés ${checkin.estres}/10`;
           setCheckinTexto(str);
+        }
+        // Restaurar planDiario del día
+        const planDiarioGuardado = localStorage.getItem(`planDiario_${email}_${hoy}`);
+        if (planDiarioGuardado) {
+          try { setPlanDiario(JSON.parse(planDiarioGuardado)); } catch {}
         }
         // Restaurar protocolos del día
         const protGuardados = localStorage.getItem(`protocolos_${email}_${hoy}`);
@@ -746,6 +825,37 @@ export default function Dashboard() {
     for (const cmd of comandos) {
       if (cmd.accion === 'MOSTRAR_PLAN') setMostrarSemana(true);
       if (cmd.accion === 'ABRIR_CONFIG') setMostrarConfig(true);
+
+      // ── INYECTAR_TARJETAS — Banana construye el timeline ─────────
+      if (cmd.accion === 'INYECTAR_TARJETAS' && Array.isArray(cmd.tarjetas) && cmd.tarjetas.length > 0) {
+        const tarjetasNuevas = cmd.tarjetas.map((t, i) => ({
+          ...t,
+          id: `banana_${Date.now()}_${i}`,
+          estado: t.estado || 'pendiente',
+          animating: true,  // flag para CSS de entrada
+        }));
+        setPlanDiario(prev => {
+          // Merge: mantener completadas, añadir/reemplazar pendientes
+          const completadas = prev.filter(t => t.estado === 'completado');
+          const merged = [...completadas, ...tarjetasNuevas];
+          // Persistir en localStorage
+          try {
+            const hoy = new Date().toISOString().split('T')[0];
+            localStorage.setItem(`planDiario_${email}_${hoy}`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+        // Quitar flag animating tras la animación
+        setTimeout(() => {
+          setPlanDiario(prev => prev.map(t => ({ ...t, animating: false })));
+        }, 600);
+      }
+
+      // ── RESET_ESTRATEGIA — regenerar plan semanal ────────────────
+      if (cmd.accion === 'RESET_ESTRATEGIA') {
+        setPlanSemanal(null);
+        setMostrarConfig(true);
+      }
 
       // ── ACTUALIZAR_PROTOCOLOS — localStorage + Supabase ──────────
       if (cmd.accion === 'ACTUALIZAR_PROTOCOLOS' && Array.isArray(cmd.nuevos_protocolos)) {
@@ -1150,6 +1260,7 @@ export default function Dashboard() {
 
             <DailyTimeline
               planSemanal={planSemanal} setPlanSemanal={setPlanSemanal}
+              planDiario={planDiario} setPlanDiario={setPlanDiario}
               email={email} objetivoId={objetivoId}
               onAbrirConfig={() => setMostrarConfig(true)}
               onTodoCompletado={() => { setMensajesChat(prev => [...prev, { rol: 'bot', texto: '¡Día perfecto completado! 🎉 Tu metabolismo te lo agradecerá mañana.', cargando: false }]); }}
