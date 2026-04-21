@@ -9,7 +9,6 @@ const SB_URL = 'https://khinwyoejhoqqunfyjft.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoaW53eW9lamhvcXF1bmZ5amZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjgxMzksImV4cCI6MjA5MDc0NDEzOX0.CE8EzbHQLdKN9Ag0nZVGS3gHPOc4NK464RyLtrP_nYM';
 const sbH = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
 
-// ── Paleta Tech Luminosa ─────────────────────────────────────────────
 const C = {
   bg:       '#ffffff',
   panel:    '#F0F8FA',
@@ -23,7 +22,6 @@ const C = {
   light:    '#D1ECF1',
   white:    '#FFFFFF',
   greenPale:'#D1ECF1',
-  // columna izquierda
   leftBg:   '#0F2A35',
   leftPanel:'#163545',
   slate:    '#163545',
@@ -82,7 +80,6 @@ async function guardarDailyState(email, campos) {
     }
   } catch (e) { console.error('guardarDailyState error:', e); }
 }
-
 async function cargarLogsRecientes(email, dias = 35) {
   try {
     const desde = new Date(); desde.setDate(desde.getDate() - dias);
@@ -333,7 +330,7 @@ function SuperBotonEventos({ onCerrar, onEnviar }) {
 
 
 // ── KcalTracker — Centro de Mando Calórico ──────────────────────────
-function KcalTracker({ planSemanal, completedTasks, objetivoId }) {
+function KcalTracker({ planSemanal, completedTasks }) {
   const getDiaHoy = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
   const diaIdx    = getDiaHoy();
   const diaData   = planSemanal?.dieta?.[diaIdx];
@@ -429,19 +426,10 @@ function KcalTracker({ planSemanal, completedTasks, objetivoId }) {
           // Estimación de macros a partir de kcal (ratios estándar por defecto)
           // Cuando el plan incluya macro_proteina, macro_carbs, macro_grasa → usarlos directamente
           const tieneProtObj = diaData.macro_proteina_g != null;
-          const ratios = {
-            'definicion_suave':     { p: 0.40, c: 0.30, g: 0.30 },
-            'definicion_agresiva':  { p: 0.40, c: 0.30, g: 0.30 },
-            'perdida_rapida':       { p: 0.45, c: 0.25, g: 0.30 },
-            'hipertrofia':          { p: 0.30, c: 0.45, g: 0.25 },
-            'hipertrofia_agresiva': { p: 0.30, c: 0.45, g: 0.25 },
-            'slow_aging':           { p: 0.35, c: 0.35, g: 0.30 },
-            'mantener':             { p: 0.30, c: 0.40, g: 0.30 },
-          };
-          const r = ratios[objetivoId] || ratios['mantener'];
-          const pObj = tieneProtObj ? diaData.macro_proteina_g : Math.round((kcalObj * r.p) / 4);
-          const cObj = tieneProtObj ? diaData.macro_carbs_g   : Math.round((kcalObj * r.c) / 4);
-          const gObj = tieneProtObj ? diaData.macro_grasa_g   : Math.round((kcalObj * r.g) / 9);
+          const pObj = tieneProtObj ? diaData.macro_proteina_g : Math.round((kcalObj * 0.30) / 4);
+          const cObj = tieneProtObj ? diaData.macro_carbs_g   : Math.round((kcalObj * 0.40) / 4);
+          const gObj = tieneProtObj ? diaData.macro_grasa_g   : Math.round((kcalObj * 0.30) / 9);
+          // Consumidas proporcional a % de kcal ingeridas
           const ratio = kcalObj > 0 ? kcalCons / kcalObj : 0;
           const pCons = Math.round(pObj * ratio);
           const cCons = Math.round(cObj * ratio);
@@ -587,17 +575,6 @@ export default function Dashboard() {
         }
       } catch {}
 
-      // Cargar daily_state desde Supabase (fuente de verdad cross-device)
-      try {
-        const ds = await cargarDailyState(email);
-        if (ds) {
-          if (ds.protocolos?.length)    setProtocolos(ds.protocolos);
-          if (ds.reporte?.analisis)     setReporteBanana(ds.reporte);
-          if (ds.chat_mensajes?.length) setMensajesChat(ds.chat_mensajes);
-          if (ds.proactivo_ok)          setMensajeProactivoGenerado(true);
-        }
-      } catch {}
-
       // Check onboarding
       try {
         const uRes = await fetch(`${SB_URL}/rest/v1/usuarios?email=eq.${encodeURIComponent(email)}&select=onboarding_completed,nombre&limit=1`, { headers: sbH });
@@ -606,15 +583,42 @@ export default function Dashboard() {
         if (uRows[0].nombre) setNombreUsuario(uRows[0].nombre);
       } catch {}
 
-      // Cargar plan
+      // ── FUENTE DE VERDAD: Supabase siempre sobreescribe localStorage ──
+      // Plan semanal
       try {
         const planDB = await cargarPlanDB(email, objId);
-        if (planDB) { setPlanSemanal(planDB); actualizarPlanDia(planDB); }
-        else {
+        if (planDB) {
+          setPlanSemanal(planDB);
+          actualizarPlanDia(planDB);
+          try { localStorage.setItem(`plan_${email}_${objId}`, JSON.stringify({ plan: planDB, fecha: Date.now() })); } catch {}
+        } else {
+          // Fallback localStorage solo si Supabase no tiene plan
           const g = localStorage.getItem(`plan_${email}_${objId}`);
           if (g) { const { plan, fecha } = JSON.parse(g); if ((Date.now() - fecha) / 86400000 < 7) { setPlanSemanal(plan); actualizarPlanDia(plan); } }
         }
       } catch {}
+
+      // daily_state: Supabase sobreescribe localStorage incondicionalmente
+      try {
+        const ds = await cargarDailyState(email);
+        if (ds) {
+          const hoy = new Date().toISOString().split('T')[0];
+          if (ds.protocolos?.length) {
+            setProtocolos(ds.protocolos);
+            try { localStorage.setItem(`protocolos_${email}_${hoy}`, JSON.stringify(ds.protocolos)); } catch {}
+          }
+          if (ds.reporte?.analisis) {
+            setReporteBanana(ds.reporte);
+            try { localStorage.setItem(`reporte_${email}_${hoy}`, JSON.stringify(ds.reporte)); } catch {}
+          }
+          if (ds.chat_mensajes?.length) {
+            setMensajesChat(ds.chat_mensajes);
+            try { localStorage.setItem(`chat_${email}_${hoy}`, JSON.stringify(ds.chat_mensajes)); } catch {}
+          }
+          if (ds.proactivo_ok) setMensajeProactivoGenerado(true);
+        }
+      } catch {}
+
       try { const logs = await cargarLogsRecientes(email, 35); setStreak(calcularRacha(logs)); } catch {}
     };
     init();
@@ -629,13 +633,71 @@ export default function Dashboard() {
     });
   };
 
+  // ── Fix 2: Flush inmediato al cerrar/minimizar ──────────────────
+  const pendingChatRef = useRef(null);
+  useEffect(() => {
+    if (!email) return;
+    const flush = () => {
+      if (pendingChatRef.current) {
+        const { emailRef, msgs } = pendingChatRef.current;
+        // navigator.sendBeacon para garantizar envío aunque se cierre la pestaña
+        const body = JSON.stringify({ email: emailRef, campos: { chat_mensajes: msgs } });
+        navigator.sendBeacon
+          ? navigator.sendBeacon('/api/flush-daily-state', body)
+          : guardarDailyState(emailRef, { chat_mensajes: msgs }).catch(() => {});
+        pendingChatRef.current = null;
+      }
+    };
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('beforeunload', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, [email]);
+
+  // Actualizar pendingChatRef cuando cambie el chat
+  useEffect(() => {
+    if (!email || mensajesChat.length === 0) return;
+    const completos = mensajesChat.filter(m => !m.cargando && m.texto);
+    if (completos.length > 0) pendingChatRef.current = { emailRef: email, msgs: completos };
+  }, [mensajesChat, email]);
+
+  // ── Fix 3: Refetch silencioso al volver a la pestaña ─────────────
+  useEffect(() => {
+    if (!email || !datos) return;
+    const refetch = async () => {
+      try {
+        const [ds, planDB] = await Promise.all([
+          cargarDailyState(email),
+          cargarPlanDB(email, objetivoId),
+        ]);
+        if (planDB) { setPlanSemanal(planDB); actualizarPlanDia(planDB); }
+        if (ds) {
+          if (ds.protocolos?.length) setProtocolos(ds.protocolos);
+          if (ds.reporte?.analisis)  setReporteBanana(ds.reporte);
+          if (ds.chat_mensajes?.length) setMensajesChat(ds.chat_mensajes);
+        }
+      } catch {}
+    };
+    const onFocus = () => refetch();
+    const onVisible = () => { if (document.visibilityState === 'visible') refetch(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [email, datos, objetivoId]);
+
   // Proactivo: cuando tenemos check-in + plan
   useEffect(() => {
     if (!checkinTexto || !planDia || mensajeProactivoGenerado || !ultimo) return;
     setMensajeProactivoGenerado(true);
-    if (email) guardarDailyState(email, { proactivo_ok: true }).catch(console.error);
+    guardarDailyState(email, { proactivo_ok: true }).catch(console.error);
     generarMensajeProactivo();
-    }, [checkinTexto, planDia]);
+  }, [checkinTexto, planDia]);
 
   // ── buildCoachPayload ────────────────────────────────────────────
   const buildCoachPayload = useCallback((extras = {}) => {
@@ -990,7 +1052,7 @@ export default function Dashboard() {
 
             {/* Centro de Mando Calórico */}
             {planSemanal && (
-              <KcalTracker planSemanal={planSemanal} completedTasks={completedTasksHoy} objetivoId={objetivoId} />
+              <KcalTracker planSemanal={planSemanal} completedTasks={completedTasksHoy} />
             )}
 
             <DailyTimeline
