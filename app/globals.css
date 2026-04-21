@@ -145,11 +145,11 @@ body {
 
 /* ── Responsive helpers ── */
 .hide-mobile { display: inline; }
-.show-mobile { display: none; }
+.show-mobile  { display: none !important; }
 
 @media (max-width: 767px) {
   .hide-mobile { display: none !important; }
-  .show-mobile { display: inline !important; }
+  .show-mobile { display: flex !important; }
 
   /* Evitar zoom en inputs iOS — font-size mínimo 16px */
   input, textarea, select {

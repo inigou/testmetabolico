@@ -496,6 +496,7 @@ export default function Dashboard() {
   const [chatCargando, setChatCargando]               = useState(false);
   const [mensajeProactivoGenerado, setMensajeProactivoGenerado] = useState(false);
   const chatEndRef = useRef(null);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
   const ultimo = datos?.[datos.length - 1];
 
@@ -989,6 +990,98 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ── FAB MÓVIL — solo visible en pantallas pequeñas ── */}
+      {datos && ultimo && (
+        <>
+          {/* Botón flotante */}
+          <button
+            className="show-mobile"
+            onClick={() => setIsMobileChatOpen(true)}
+            style={{
+              position: 'fixed', bottom: 24, right: 24, zIndex: 50,
+              width: 56, height: 56, borderRadius: '50%',
+              background: C.accent, border: 'none',
+              boxShadow: '0 4px 20px rgba(24,119,143,0.45)',
+              cursor: 'pointer', fontSize: 26,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'transform 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            🍌
+          </button>
+
+          {/* Overlay oscuro */}
+          {isMobileChatOpen && (
+            <div
+              className="show-mobile"
+              onClick={() => setIsMobileChatOpen(false)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 55,
+                background: 'rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(2px)',
+              }}
+            />
+          )}
+
+          {/* Panel chat móvil — slide up */}
+          <div
+            className="show-mobile"
+            style={{
+              position: 'fixed', inset: '0 0 0 0', zIndex: 60,
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              pointerEvents: isMobileChatOpen ? 'all' : 'none',
+            }}
+          >
+            <div style={{
+              background: C.white,
+              borderRadius: '20px 20px 0 0',
+              height: '85dvh',
+              display: 'flex', flexDirection: 'column',
+              transform: isMobileChatOpen ? 'translateY(0)' : 'translateY(100%)',
+              transition: 'transform 0.35s cubic-bezier(0.32,0.72,0,1)',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
+              overflow: 'hidden',
+            }}>
+              {/* Handle / barra de cierre */}
+              <div style={{
+                background: C.accent, padding: '12px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexShrink: 0,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>🍌</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: C.white }}>Banana</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>Tu coach metabólico</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMobileChatOpen(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)', border: 'none',
+                    color: C.white, width: 32, height: 32,
+                    borderRadius: '50%', fontSize: 16,
+                    cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >✕</button>
+              </div>
+
+              {/* Mensajes + input */}
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <BananaChat
+                  mensajes={mensajesChat} input={inputChat} setInput={setInputChat}
+                  cargando={chatCargando} onEnviar={enviarMensaje}
+                  chatEndRef={chatEndRef} inline={true}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* DASHBOARD — Layout híbrido */}
       {datos && ultimo && (
         <div className="dashboard-grid" style={{ background: '#ffffff' }}>
@@ -1036,8 +1129,8 @@ export default function Dashboard() {
             {/* Micro check-in */}
             <MicroCheckIn email={email} onCheckinChange={setCheckinTexto} onBananaReactivo={handleCheckinReactivo} />
 
-            {/* Banana chat — inline en desktop */}
-            <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.light}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {/* Banana chat — solo visible en desktop (móvil usa FAB) */}
+            <div className="hide-mobile" style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.light}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <BananaChat
                 mensajes={mensajesChat} input={inputChat} setInput={setInputChat}
                 cargando={chatCargando} onEnviar={enviarMensaje}
