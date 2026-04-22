@@ -302,11 +302,11 @@ function BananaChat({ mensajes, input, setInput, cargando, onEnviar, chatEndRef,
               maxWidth: '82%',
               padding: '9px 12px',
               borderRadius: m.rol === 'usuario' ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
-              background: m.rol === 'usuario' ? C.orange : C.white,
-              color: m.rol === 'usuario' ? C.white : C.dark,
+              background: m.rol === 'usuario' ? C.orange : '#263447',
+              color: '#F1F5F9',
               fontSize: 12, lineHeight: 1.65,
-              border: m.rol === 'bot' ? `1px solid ${C.light}` : 'none',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              border: m.rol === 'bot' ? '1px solid rgba(255,255,255,0.08)' : 'none',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
             }}>
               {m.esProactivo && <div style={{ fontSize: 9, color: C.accent, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🍌 Mensaje del día</div>}
               {m.esEvento   && <div style={{ fontSize: 9, color: C.orange, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠️ Plan adaptado</div>}
@@ -530,10 +530,20 @@ function KcalTracker({ planSemanal, completedTasks, planDiario = [], objetivoId,
         {(() => {
           // Estimación de macros a partir de kcal (ratios estándar por defecto)
           // Cuando el plan incluya macro_proteina, macro_carbs, macro_grasa → usarlos directamente
-          const tieneProtObj = diaData.macro_proteina_g != null;
-          const pObj = tieneProtObj ? diaData.macro_proteina_g : Math.round((kcalObj * 0.30) / 4);
-          const cObj = tieneProtObj ? diaData.macro_carbs_g   : Math.round((kcalObj * 0.40) / 4);
-          const gObj = tieneProtObj ? diaData.macro_grasa_g   : Math.round((kcalObj * 0.30) / 9);
+          const macroRatios = {
+            'definicion_agresiva': { p: 0.45, c: 0.25, g: 0.30 },
+            'definicion_suave':    { p: 0.40, c: 0.30, g: 0.30 },
+            'recomposicion':       { p: 0.40, c: 0.30, g: 0.30 },
+            'volumen':             { p: 0.30, c: 0.50, g: 0.20 },
+            'rendimiento':         { p: 0.25, c: 0.55, g: 0.20 },
+            'mantener':            { p: 0.30, c: 0.40, g: 0.30 },
+            'salud':               { p: 0.30, c: 0.40, g: 0.30 },
+          };
+          const mr = macroRatios[objetivoId] || macroRatios['mantener'];
+          const tieneProtObj = diaData?.macro_proteina_g != null;
+          const pObj = tieneProtObj ? diaData.macro_proteina_g : Math.round((kcalObj * mr.p) / 4);
+          const cObj = tieneProtObj ? diaData.macro_carbs_g   : Math.round((kcalObj * mr.c) / 4);
+          const gObj = tieneProtObj ? diaData.macro_grasa_g   : Math.round((kcalObj * mr.g) / 9);
           // Consumidas proporcional a % de kcal ingeridas
           const ratio = kcalObj > 0 ? kcalCons / kcalObj : 0;
           const pCons = Math.round(pObj * ratio);
@@ -605,6 +615,7 @@ export default function Dashboard() {
   const chatEndRef = useRef(null);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false); // legacy, ya no se usa
   const [activeTab, setActiveTab]                 = useState('hoy'); // 'chat' | 'hoy' | 'perfil'
+  const [mensajesNoLeidos, setMensajesNoLeidos]   = useState(0);
 
   const ultimo = datos?.[datos.length - 1];
 
@@ -997,6 +1008,9 @@ export default function Dashboard() {
       if (esReactivo) {
         // Añadir como mensaje nuevo sin input del usuario
         setMensajesChat(prev => [...prev, { rol: 'bot', texto, cargando: false }]);
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+          setMensajesNoLeidos(prev => prev + 1);
+        }
       } else {
         setMensajesChat(prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, texto, cargando: false } : m));
       }
@@ -1517,11 +1531,10 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* TAB BAR */}
+          {/* TAB BAR — 2 tabs + FAB Banana */}
           <nav className="tab-bar">
             {[
               { id: 'hoy',    icon: '📋', label: 'Hoy' },
-              { id: 'chat',   icon: '🍌', label: 'Banana' },
               { id: 'perfil', icon: '👤', label: 'Perfil' },
             ].map(tab => (
               <button key={tab.id} className={`tab-btn${activeTab === tab.id ? ' active' : ''}`} onClick={() => setActiveTab(tab.id)}>
@@ -1530,6 +1543,37 @@ export default function Dashboard() {
               </button>
             ))}
           </nav>
+
+          {/* FAB Banana flotante con badge de notificación */}
+          {activeTab !== 'chat' && (
+            <button
+              onClick={() => { setActiveTab('chat'); setMensajesNoLeidos(0); }}
+              style={{
+                position: 'fixed', bottom: 72, right: 18, zIndex: 200,
+                width: 56, height: 56, borderRadius: '50%',
+                background: mensajesNoLeidos > 0 ? C.orange : C.accent,
+                border: 'none', boxShadow: `0 4px 20px ${mensajesNoLeidos > 0 ? 'rgba(232,98,26,0.5)' : 'rgba(24,119,143,0.5)'}`,
+                cursor: 'pointer', fontSize: 26,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s',
+                animation: mensajesNoLeidos > 0 ? 'pulse 2s ease-in-out infinite' : 'none',
+              }}
+            >
+              🍌
+              {mensajesNoLeidos > 0 && (
+                <div style={{
+                  position: 'absolute', top: -4, right: -4,
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: '#EF4444', color: '#fff',
+                  fontSize: 11, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '2px solid #0F1A25',
+                }}>
+                  {mensajesNoLeidos > 9 ? '9+' : mensajesNoLeidos}
+                </div>
+              )}
+            </button>
+          )}
         </div>
       )}
     </div>
