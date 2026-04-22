@@ -1449,13 +1449,13 @@ export default function Dashboard() {
 
       {/* ── DESKTOP: 3 columnas ── */}
       {datos && ultimo && (
-        <div className="dashboard-grid">
+        <div className="dashboard-grid hide-mobile">
           {/* SIDEBAR: perfil + check-in */}
-          <div className="col-sidebar">{renderSidebar()}</div>
+          <div className="col-sidebar hide-mobile">{renderSidebar()}</div>
           {/* CHAT: Banana protagonista */}
-          <div className="col-chat">{renderChat()}</div>
+          <div className="col-chat hide-mobile">{renderChat()}</div>
           {/* TIMELINE: plan del día */}
-          <div className="col-timeline">{renderTimeline()}</div>
+          <div className="col-timeline hide-mobile">{renderTimeline()}</div>
         </div>
       )}
 
@@ -1465,6 +1465,16 @@ export default function Dashboard() {
           <div className="tab-content">
             {activeTab === 'chat' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 56px - 58px)', overflow: 'hidden' }}>
+                {/* Header con botón volver */}
+                <div style={{ background: C.accent, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <button onClick={() => setActiveTab('hoy')} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: C.white, width: 32, height: 32, borderRadius: '50%', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
+                  <span style={{ fontSize: 16 }}>🍌</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: C.white }}>Banana</div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>Tu coach metabólico</div>
+                  </div>
+                  <div style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%', background: '#86EFAC' }} />
+                </div>
                 {renderChat()}
               </div>
             )}
